@@ -1,5 +1,7 @@
 # Tattoo App — Plataforma Web para Estudio de Tatuajes
 
+![CI](https://github.com/Dabo2345/tattoo_app/actions/workflows/ci.yml/badge.svg)
+
 Plataforma web profesional para estudio de tatuajes. Gestión de reservas, pagos de depósitos, galería de portfolio y panel administrativo.
 
 ---
