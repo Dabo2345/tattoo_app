@@ -27,7 +27,8 @@
   "dependencies": {
     "next": "15.5.19",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.6.1",
