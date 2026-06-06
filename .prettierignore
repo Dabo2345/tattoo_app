@@ -1,0 +1,11 @@
+.next/
+out/
+build/
+node_modules/
+pnpm-lock.yaml
+*.generated.*
+prisma/migrations/
+docs/
+issues-docs/
+CLAUDE.md
+README.md
