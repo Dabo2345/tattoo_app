@@ -1,15 +1,15 @@
 import { PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
+import { env } from "@/lib/env"
 
 // Patrón singleton para evitar múltiples instancias en desarrollo (HMR)
-// DATABASE_URL (pooling) es cargado por Next.js desde .env.local automáticamente
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
 function createPrismaClient() {
   const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL ?? "",
+    connectionString: env.DATABASE_URL,
   })
 
   return new PrismaClient({

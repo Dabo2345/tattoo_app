@@ -50,6 +50,10 @@ const clientSchema = z.object({
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 })
 
+// ─── Tipos exportados ────────────────────────────────────────────────────────
+
+type EnvVars = z.infer<typeof serverSchema> & z.infer<typeof clientSchema>
+
 // ─── Validación ──────────────────────────────────────────────────────────────
 
 export function validateEnv() {
@@ -65,7 +69,17 @@ export function validateEnv() {
         `\n❌ Variables de entorno inválidas o faltantes:\n${errorMessages}\n\nRevisa ENV-001 y tu archivo .env.local`
       )
     }
-    return { ...parsed.data, ...clientSchema.parse(process.env) }
+    const clientParsed = clientSchema.safeParse(process.env)
+    if (!clientParsed.success) {
+      const clientErrors = clientParsed.error.flatten().fieldErrors
+      const clientErrorMessages = Object.entries(clientErrors)
+        .map(([key, msgs]) => `  • ${key}: ${msgs?.join(", ")}`)
+        .join("\n")
+      throw new Error(
+        `\n❌ Variables de entorno inválidas o faltantes:\n${clientErrorMessages}\n\nRevisa ENV-001 y tu archivo .env.local`
+      )
+    }
+    return { ...parsed.data, ...clientParsed.data }
   }
 
   // En el cliente, solo validamos NEXT_PUBLIC_*
@@ -76,4 +90,4 @@ export function validateEnv() {
   return parsed.data ?? {}
 }
 
-export const env = validateEnv()
+export const env = validateEnv() as EnvVars
