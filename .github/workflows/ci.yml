@@ -61,15 +61,21 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
-          RESEND_FROM_NAME: ${{ secrets.RESEND_FROM_NAME }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # Dummy values that satisfy Zod validation for build-time checks.
+          # Real secrets are not needed during static analysis/build.
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci_db"
+          DIRECT_URL: "postgresql://ci:ci@localhost:5432/ci_db"
+          SUPABASE_URL: "https://ci-placeholder.supabase.co"
+          SUPABASE_ANON_KEY: "ci-dummy-anon-key-for-build"
+          SUPABASE_SERVICE_ROLE_KEY: "ci-dummy-service-role-key-for-build"
+          BETTER_AUTH_SECRET: "ci-dummy-secret-for-build-must-be-at-least-32-chars"
+          BETTER_AUTH_URL: "http://localhost:3000"
+          STRIPE_SECRET_KEY: "sk_test_ci_dummy_build_key"
+          STRIPE_WEBHOOK_SECRET: "whsec_ci_dummy_build_key"
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_ci_dummy_build_key"
+          RESEND_API_KEY: "re_ci_dummy_build_key"
+          RESEND_FROM_EMAIL: "ci@example.com"
+          RESEND_FROM_NAME: "CI Build"
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
