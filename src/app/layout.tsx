@@ -10,8 +10,15 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Tattoo Studio",
-  description: "Book your tattoo appointment",
+  title: {
+    default: "Estudio de Tatuajes",
+    template: "%s | Estudio de Tatuajes",
+  },
+  description: "Estudio de tatuajes profesional. Reserva tu consulta online.",
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
