@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { LoginForm } from "./login-form"
 
 export const metadata: Metadata = {
   title: "Acceso Admin",
@@ -7,13 +8,14 @@ export const metadata: Metadata = {
 
 export default function AdminLoginPage() {
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-sm px-6 py-8 bg-surface rounded border border-border">
-        <h1 className="text-h3 text-foreground mb-2">Acceso Admin</h1>
-        <p className="text-foreground-secondary text-sm">
-          Autenticación — próximamente (issue #010).
-        </p>
+    <main className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-sm px-6 py-8 bg-surface rounded border border-border space-y-6">
+        <div className="space-y-1">
+          <h1 className="text-h3 font-semibold text-foreground">Acceso Admin</h1>
+          <p className="text-foreground-secondary text-sm">Accede con tu cuenta de administrador</p>
+        </div>
+        <LoginForm />
       </div>
-    </div>
+    </main>
   )
 }

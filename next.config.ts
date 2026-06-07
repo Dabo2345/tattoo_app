@@ -2,7 +2,8 @@ import type { NextConfig } from "next"
 import { withSentryConfig } from "@sentry/nextjs"
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // better-auth y sus adapters tienen deps complejas — no bundlear en el servidor
+  serverExternalPackages: ["better-auth", "@better-auth/kysely-adapter"],
 }
 
 export default withSentryConfig(nextConfig, {
