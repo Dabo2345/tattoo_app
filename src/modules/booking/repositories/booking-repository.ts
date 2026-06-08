@@ -82,6 +82,17 @@ export const bookingRepository = {
   },
 
   /**
+   * Devuelve la cita CONFIRMED más reciente de un cliente.
+   * Usada en POST /api/magic-links/request para saber a qué cita vincular el link.
+   */
+  async findLatestConfirmedAppointmentByClientId(clientId: string) {
+    return prisma.appointment.findFirst({
+      where: { clientId, status: "CONFIRMED", deletedAt: null },
+      orderBy: { createdAt: "desc" },
+    })
+  },
+
+  /**
    * Busca un MagicLink por tokenHash e incluye el Appointment con Client.
    * Usado en validateMagicLink para devolver los datos de la cita.
    */
