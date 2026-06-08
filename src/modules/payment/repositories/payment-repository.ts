@@ -76,4 +76,30 @@ export const paymentRepository = {
       data: { status: "REFUNDED" },
     })
   },
+
+  /**
+   * Crea el registro Refund y marca el Payment como REFUNDED en una transacción.
+   * Llamado por depositPolicyService tras ejecutar el reembolso en Stripe (#019).
+   */
+  async createRefundRecord(data: {
+    paymentId: string
+    appointmentId: string
+    stripeRefundId: string
+    amount: number
+  }) {
+    return prisma.$transaction([
+      prisma.refund.create({
+        data: {
+          paymentId: data.paymentId,
+          stripeRefundId: data.stripeRefundId,
+          amount: data.amount,
+          refundedAt: new Date(),
+        },
+      }),
+      prisma.payment.update({
+        where: { id: data.paymentId },
+        data: { status: "REFUNDED" },
+      }),
+    ])
+  },
 }
