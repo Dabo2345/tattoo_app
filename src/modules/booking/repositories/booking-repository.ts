@@ -27,6 +27,37 @@ export const bookingRepository = {
   },
 
   /**
+   * Obtiene un Appointment por id con el cliente asociado.
+   */
+  async findAppointmentById(id: string) {
+    return prisma.appointment.findUnique({
+      where: { id },
+      include: { client: true },
+    })
+  },
+
+  /**
+   * Cancela un Appointment (CONFIRMED → CANCELLED).
+   * Solo cancela si el estado actual es cancelable (no ya CANCELLED/COMPLETED).
+   */
+  async cancelAppointment(id: string) {
+    return prisma.appointment.update({
+      where: { id },
+      data: { status: "CANCELLED" },
+    })
+  },
+
+  /**
+   * Busca un MagicLink por su tokenHash.
+   * Usado para validar el token de gestión del cliente.
+   */
+  async findMagicLinkByHash(tokenHash: string) {
+    return prisma.magicLink.findUnique({
+      where: { tokenHash },
+    })
+  },
+
+  /**
    * Registra una acción en AuditLog. RB-020: toda acción del sistema queda auditada.
    * Escritura directa hasta que exista AuditService (#022).
    */
