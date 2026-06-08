@@ -28,6 +28,7 @@ export type ApiErrorCode =
   | "LINK_ALREADY_USED"
   | "REFUND_FAILED"
   | "CONFLICT"
+  | "RESCHEDULE_NOT_ALLOWED"
   | "INTERNAL_ERROR"
 
 // Resultado de Server Actions (para componentes)
