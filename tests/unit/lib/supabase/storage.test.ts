@@ -1,4 +1,7 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
+
+vi.mock("@/lib/supabase/client", () => ({ supabaseAdmin: {} }))
+
 import { validateImageFile } from "@/lib/supabase/storage"
 
 describe("validateImageFile", () => {
