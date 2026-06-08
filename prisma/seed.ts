@@ -1,6 +1,13 @@
-import { PrismaClient } from "@prisma/client"
+import { config } from "dotenv"
+import path from "path"
 
-const prisma = new PrismaClient()
+config({ path: path.resolve(process.cwd(), ".env.local") })
+
+import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log("🌱 Iniciando seed...")

@@ -23,6 +23,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
     "db:create-admin": "tsx scripts/create-admin.ts",
+    "setup": "tsx scripts/setup-dev.ts",
     "prepare": "husky"
   },
   "dependencies": {
