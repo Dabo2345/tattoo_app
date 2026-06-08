@@ -1,6 +1,7 @@
 import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { clientRepository } from "../repositories/client-repository"
 import { bookingRepository } from "../repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
 import type { CreateConsultationInput, CreateConsultationResult } from "../types"
 
 export const bookingService = {
@@ -32,10 +33,8 @@ export const bookingService = {
       notes: input.tattooDescription,
     })
 
-    // 4. Registrar en AuditLog
-    await bookingRepository.createAuditLog({
-      action: "CONSULTATION_CREATED",
-      entityId: appointment.id,
+    // 4. Registrar en AuditLog (RB-020)
+    await auditService.log("CONSULTATION_CREATED", appointment.id, {
       entityType: "Appointment",
       clientId: client.id,
       metadata: {

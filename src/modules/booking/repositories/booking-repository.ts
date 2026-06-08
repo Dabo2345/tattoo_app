@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db/prisma"
-import type { Prisma } from "@prisma/client"
 
 export const bookingRepository = {
   /**
@@ -65,28 +64,6 @@ export const bookingRepository = {
   async findMagicLinkByHash(tokenHash: string) {
     return prisma.magicLink.findUnique({
       where: { tokenHash },
-    })
-  },
-
-  /**
-   * Registra una acción en AuditLog. RB-020: toda acción del sistema queda auditada.
-   * Escritura directa hasta que exista AuditService (#022).
-   */
-  async createAuditLog(data: {
-    action: string
-    entityId?: string
-    entityType?: string
-    clientId?: string
-    metadata?: Prisma.InputJsonValue
-  }) {
-    return prisma.auditLog.create({
-      data: {
-        action: data.action,
-        entityId: data.entityId,
-        entityType: data.entityType,
-        clientId: data.clientId,
-        metadata: data.metadata ?? undefined,
-      },
     })
   },
 }

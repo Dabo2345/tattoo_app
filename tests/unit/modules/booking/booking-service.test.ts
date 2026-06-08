@@ -18,19 +18,25 @@ vi.mock("@/modules/booking/repositories/client-repository", () => ({
 vi.mock("@/modules/booking/repositories/booking-repository", () => ({
   bookingRepository: {
     createConsultation: vi.fn(),
-    createAuditLog: vi.fn(),
+  },
+}))
+
+vi.mock("@/modules/audit/services/audit-service", () => ({
+  auditService: {
+    log: vi.fn(),
   },
 }))
 
 import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { clientRepository } from "@/modules/booking/repositories/client-repository"
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
 import { bookingService } from "@/modules/booking/services/booking-service"
 
 const mockAssertSlot = vi.mocked(calendarService.assertSlotAvailable)
 const mockFindOrCreate = vi.mocked(clientRepository.findOrCreate)
 const mockCreateConsultation = vi.mocked(bookingRepository.createConsultation)
-const mockCreateAuditLog = vi.mocked(bookingRepository.createAuditLog)
+const mockAuditLog = vi.mocked(auditService.log)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -75,7 +81,7 @@ describe("bookingService.createConsultation", () => {
     mockAssertSlot.mockResolvedValue(undefined)
     mockFindOrCreate.mockResolvedValue(mockClient)
     mockCreateConsultation.mockResolvedValue(mockAppointment)
-    mockCreateAuditLog.mockResolvedValue({} as never)
+    mockAuditLog.mockResolvedValue(undefined)
   })
 
   it("crea appointment y auditlog cuando el slot está libre y el cliente es nuevo", async () => {
@@ -119,7 +125,7 @@ describe("bookingService.createConsultation", () => {
 
     expect(mockFindOrCreate).not.toHaveBeenCalled()
     expect(mockCreateConsultation).not.toHaveBeenCalled()
-    expect(mockCreateAuditLog).not.toHaveBeenCalled()
+    expect(mockAuditLog).not.toHaveBeenCalled()
   })
 
   it("el appointment se crea con status PENDING_PAYMENT", async () => {
@@ -135,10 +141,10 @@ describe("bookingService.createConsultation", () => {
   it("crea el auditlog con action CONSULTATION_CREATED y los IDs correctos", async () => {
     await bookingService.createConsultation(validInput)
 
-    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "CONSULTATION_CREATED",
+      mockAppointment.id,
       expect.objectContaining({
-        action: "CONSULTATION_CREATED",
-        entityId: mockAppointment.id,
         entityType: "Appointment",
         clientId: mockClient.id,
       })

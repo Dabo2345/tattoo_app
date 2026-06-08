@@ -11,7 +11,6 @@ vi.mock("@/modules/booking/repositories/booking-repository", () => ({
     findMagicLinkByHash: vi.fn(),
     findAppointmentById: vi.fn(),
     cancelAppointment: vi.fn(),
-    createAuditLog: vi.fn(),
   },
 }))
 
@@ -21,13 +20,20 @@ vi.mock("@/modules/payment/services/deposit-policy", () => ({
   },
 }))
 
+vi.mock("@/modules/audit/services/audit-service", () => ({
+  auditService: {
+    log: vi.fn(),
+  },
+}))
+
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
+import { auditService } from "@/modules/audit/services/audit-service"
 
 const mockFindMagicLink = vi.mocked(bookingRepository.findMagicLinkByHash)
 const mockFindAppointment = vi.mocked(bookingRepository.findAppointmentById)
 const mockCancelAppointment = vi.mocked(bookingRepository.cancelAppointment)
-const mockCreateAuditLog = vi.mocked(bookingRepository.createAuditLog)
+const mockAuditLog = vi.mocked(auditService.log)
 const mockHandleCancellation = vi.mocked(depositPolicyService.handleCancellation)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -76,7 +82,7 @@ describe("POST /api/appointments/:id/cancel", () => {
     mockFindMagicLink.mockResolvedValue(mockMagicLink as never)
     mockFindAppointment.mockResolvedValue(mockAppointment as never)
     mockCancelAppointment.mockResolvedValue(mockAppointment as never)
-    mockCreateAuditLog.mockResolvedValue({} as never)
+    mockAuditLog.mockResolvedValue(undefined)
     mockHandleCancellation.mockResolvedValue({ refunded: true, stripeRefundId: "re_test_123" })
   })
 
@@ -164,11 +170,10 @@ describe("POST /api/appointments/:id/cancel", () => {
   it("crea AuditLog APPOINTMENT_CANCELLED con el resultado del reembolso", async () => {
     await POST(makeRequest({ magicLinkToken: rawToken }), ctx)
 
-    expect(mockCreateAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "APPOINTMENT_CANCELLED",
-        entityId: appointmentId,
-      })
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "APPOINTMENT_CANCELLED",
+      appointmentId,
+      expect.objectContaining({ entityType: "Appointment" })
     )
   })
 })

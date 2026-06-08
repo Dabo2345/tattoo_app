@@ -1,6 +1,6 @@
 import { stripe } from "@/lib/stripe/client"
 import { paymentRepository } from "../repositories/payment-repository"
-import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
 import { RefundFailedError, PaymentFailedError } from "@/lib/api/errors"
 import { logger } from "@/lib/logger"
 import { captureException } from "@/lib/sentry"
@@ -34,9 +34,7 @@ export const depositPolicyService = {
 
     if (days < REFUND_THRESHOLD_DAYS) {
       // RB-014: retención del depósito
-      await bookingRepository.createAuditLog({
-        action: "DEPOSIT_RETAINED",
-        entityId: appointmentId,
+      await auditService.log("DEPOSIT_RETAINED", appointmentId, {
         entityType: "Appointment",
         metadata: { daysUntilAppointment: days, reason: "cancelled_too_late" },
       })
@@ -77,9 +75,7 @@ export const depositPolicyService = {
       amount: Number(payment.amount),
     })
 
-    await bookingRepository.createAuditLog({
-      action: "DEPOSIT_REFUNDED",
-      entityId: appointmentId,
+    await auditService.log("DEPOSIT_REFUNDED", appointmentId, {
       entityType: "Appointment",
       metadata: { stripeRefundId, daysUntilAppointment: days },
     })

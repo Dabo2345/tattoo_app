@@ -11,7 +11,6 @@ vi.mock("@/modules/booking/repositories/booking-repository", () => ({
     findMagicLinkByHash: vi.fn(),
     findAppointmentById: vi.fn(),
     rescheduleAppointment: vi.fn(),
-    createAuditLog: vi.fn(),
   },
 }))
 
@@ -21,13 +20,20 @@ vi.mock("@/modules/calendar/services/calendar-service", () => ({
   },
 }))
 
+vi.mock("@/modules/audit/services/audit-service", () => ({
+  auditService: {
+    log: vi.fn(),
+  },
+}))
+
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { calendarService } from "@/modules/calendar/services/calendar-service"
+import { auditService } from "@/modules/audit/services/audit-service"
 
 const mockFindMagicLink = vi.mocked(bookingRepository.findMagicLinkByHash)
 const mockFindAppointment = vi.mocked(bookingRepository.findAppointmentById)
 const mockRescheduleAppointment = vi.mocked(bookingRepository.rescheduleAppointment)
-const mockCreateAuditLog = vi.mocked(bookingRepository.createAuditLog)
+const mockAuditLog = vi.mocked(auditService.log)
 const mockAssertSlotAvailable = vi.mocked(calendarService.assertSlotAvailable)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -84,7 +90,7 @@ describe("POST /api/appointments/:id/reschedule", () => {
     mockFindMagicLink.mockResolvedValue(mockMagicLink as never)
     mockFindAppointment.mockResolvedValue(mockAppointment as never)
     mockRescheduleAppointment.mockResolvedValue(mockAppointment as never)
-    mockCreateAuditLog.mockResolvedValue({} as never)
+    mockAuditLog.mockResolvedValue(undefined)
     mockAssertSlotAvailable.mockResolvedValue(undefined)
   })
 
@@ -244,13 +250,12 @@ describe("POST /api/appointments/:id/reschedule", () => {
   it("crea AuditLog APPOINTMENT_RESCHEDULED con metadata de fechas", async () => {
     await POST(makeRequest({ magicLinkToken: rawToken, newStartAt: newStartAt.toISOString() }), ctx)
 
-    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "APPOINTMENT_RESCHEDULED",
+      appointmentId,
       expect.objectContaining({
-        action: "APPOINTMENT_RESCHEDULED",
-        entityId: appointmentId,
-        metadata: expect.objectContaining({
-          newStartsAt: newStartAt.toISOString(),
-        }),
+        entityType: "Appointment",
+        metadata: expect.objectContaining({ newStartsAt: newStartAt.toISOString() }),
       })
     )
   })

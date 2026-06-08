@@ -11,6 +11,7 @@ import {
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { daysUntilAppointment } from "@/modules/payment/services/deposit-policy"
+import { auditService } from "@/modules/audit/services/audit-service"
 
 const CONSULTATION_DURATION_MINUTES = 60
 
@@ -78,9 +79,7 @@ export const POST = withErrorHandler(
     // Reprogramar
     await bookingRepository.rescheduleAppointment(appointmentId, newStartAt, newEndsAt)
 
-    await bookingRepository.createAuditLog({
-      action: "APPOINTMENT_RESCHEDULED",
-      entityId: appointmentId,
+    await auditService.log("APPOINTMENT_RESCHEDULED", appointmentId, {
       entityType: "Appointment",
       clientId: appointment.clientId,
       metadata: {
