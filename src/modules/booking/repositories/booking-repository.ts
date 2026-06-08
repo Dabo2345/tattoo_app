@@ -66,4 +66,33 @@ export const bookingRepository = {
       where: { tokenHash },
     })
   },
+
+  /**
+   * Crea un MagicLink para un Appointment.
+   * Solo almacena el hash del token, nunca el token plano (AUTH-001 §13).
+   */
+  async createMagicLink(data: { appointmentId: string; tokenHash: string; expiresAt: Date }) {
+    return prisma.magicLink.create({
+      data: {
+        appointmentId: data.appointmentId,
+        tokenHash: data.tokenHash,
+        expiresAt: data.expiresAt,
+      },
+    })
+  },
+
+  /**
+   * Busca un MagicLink por tokenHash e incluye el Appointment con Client.
+   * Usado en validateMagicLink para devolver los datos de la cita.
+   */
+  async findMagicLinkWithAppointment(tokenHash: string) {
+    return prisma.magicLink.findUnique({
+      where: { tokenHash },
+      include: {
+        appointment: {
+          include: { client: true },
+        },
+      },
+    })
+  },
 }

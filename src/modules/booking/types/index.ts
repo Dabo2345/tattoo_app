@@ -15,3 +15,26 @@ export interface CreateConsultationResult {
   appointmentId: string
   clientId: string
 }
+
+export interface CreateMagicLinkResult {
+  /** Token plano para incluir en la URL. Nunca se almacena en DB. */
+  token: string
+  expiresAt: Date
+}
+
+export interface ValidateMagicLinkResult {
+  appointment: {
+    id: string
+    type: string
+    status: string
+    startsAt: Date
+    endsAt: Date
+    notes: string | null
+    client: {
+      id: string
+      name: string
+      email: string
+      phone: string
+    }
+  }
+}
