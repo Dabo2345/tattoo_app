@@ -85,6 +85,17 @@ export class RefundFailedError extends DomainError {
   }
 }
 
+export class RescheduleNotAllowedError extends DomainError {
+  constructor() {
+    super(
+      "RESCHEDULE_NOT_ALLOWED",
+      "No se puede reprogramar con menos de 4 días de antelación",
+      409
+    )
+    this.name = "RescheduleNotAllowedError"
+  }
+}
+
 // ─── Error interno genérico ───────────────────────────────────────────────────
 
 export class InternalError extends DomainError {

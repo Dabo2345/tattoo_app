@@ -48,6 +48,17 @@ export const bookingRepository = {
   },
 
   /**
+   * Reprograma un Appointment actualizando startsAt y endsAt.
+   * RB-015: solo permitido si el caller ha validado ≥4 días antes de llamar.
+   */
+  async rescheduleAppointment(id: string, newStartsAt: Date, newEndsAt: Date) {
+    return prisma.appointment.update({
+      where: { id },
+      data: { startsAt: newStartsAt, endsAt: newEndsAt },
+    })
+  },
+
+  /**
    * Busca un MagicLink por su tokenHash.
    * Usado para validar el token de gestión del cliente.
    */
