@@ -19,4 +19,50 @@ export const paymentRepository = {
       },
     })
   },
+
+  /**
+   * Obtiene el Payment asociado a un appointmentId.
+   */
+  async findByAppointmentId(appointmentId: string) {
+    return prisma.payment.findFirst({
+      where: { appointmentId },
+    })
+  },
+
+  /**
+   * Obtiene el Payment por stripePaymentIntentId.
+   */
+  async findByPaymentIntentId(stripePaymentIntentId: string) {
+    return prisma.payment.findFirst({
+      where: { stripePaymentIntentId },
+    })
+  },
+
+  /**
+   * Confirma el pago: transacción atómica Appointment CONFIRMED + Payment PAID.
+   * Idempotente: solo actualiza si Appointment está en PENDING_PAYMENT.
+   * RB-003: no se confirma sin pago válido.
+   */
+  async confirmPayment(appointmentId: string) {
+    return prisma.$transaction([
+      prisma.appointment.updateMany({
+        where: { id: appointmentId, status: "PENDING_PAYMENT" },
+        data: { status: "CONFIRMED" },
+      }),
+      prisma.payment.updateMany({
+        where: { appointmentId, status: "PENDING" },
+        data: { status: "PAID" },
+      }),
+    ])
+  },
+
+  /**
+   * Marca el Payment como REFUNDED cuando Stripe notifica un reembolso.
+   */
+  async refundPayment(appointmentId: string) {
+    return prisma.payment.updateMany({
+      where: { appointmentId, status: "PAID" },
+      data: { status: "REFUNDED" },
+    })
+  },
 }
