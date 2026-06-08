@@ -131,15 +131,16 @@ model MagicLink {
 }
 
 model Payment {
-  id                    String        @id @default(uuid())
-  appointmentId         String        @unique
-  stripePaymentIntentId String        @unique
-  amount                Decimal       @db.Decimal(10, 2)
-  currency              String        @default("eur")
-  status                PaymentStatus @default(PENDING)
-  paidAt                DateTime?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  id                      String        @id @default(uuid())
+  appointmentId           String        @unique
+  stripeCheckoutSessionId String        @unique
+  stripePaymentIntentId   String?       @unique
+  amount                  Decimal       @db.Decimal(10, 2)
+  currency                String        @default("eur")
+  status                  PaymentStatus @default(PENDING)
+  paidAt                  DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
   appointment Appointment @relation(fields: [appointmentId], references: [id])
   refund      Refund?

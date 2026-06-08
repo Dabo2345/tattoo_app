@@ -11,7 +11,8 @@ const DEPOSIT_AMOUNT_CENTS = DEPOSIT_AMOUNT_EUR * 100
 export const paymentService = {
   /**
    * Crea una Stripe Checkout Session para el depósito de una consulta.
-   * Guarda el Payment en DB con status PENDING.
+   * Guarda el Payment en DB con status PENDING usando el checkout session ID.
+   * El stripePaymentIntentId se rellena cuando Stripe confirma el pago (webhook #018).
    * RB-002: toda consulta requiere depósito previo.
    */
   async createCheckoutSession(appointmentId: string): Promise<CreateCheckoutSessionResult> {
@@ -42,18 +43,12 @@ export const paymentService = {
       throw new PaymentFailedError("Stripe no devolvió una URL de checkout")
     }
 
-    const paymentIntentId =
-      typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.payment_intent?.id
-
-    if (!paymentIntentId) {
-      throw new PaymentFailedError("Stripe no devolvió un Payment Intent")
-    }
-
+    // session.payment_intent es null al crear la sesión (Stripe lo genera después).
+    // Guardamos session.id como clave de rastreo; el payment_intent se almacena
+    // al recibir el webhook checkout.session.completed (#018).
     await paymentRepository.createPayment({
       appointmentId,
-      stripePaymentIntentId: paymentIntentId,
+      stripeCheckoutSessionId: session.id,
       amount: DEPOSIT_AMOUNT_EUR,
     })
 

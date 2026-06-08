@@ -74,13 +74,19 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
     return
   }
 
-  await paymentRepository.confirmPayment(appointmentId)
+  // Extraer el payment_intent del evento del webhook (aquí sí está disponible)
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? "")
+
+  await paymentRepository.confirmPayment(appointmentId, paymentIntentId)
 
   await bookingRepository.createAuditLog({
     action: "CONSULTATION_CONFIRMED",
     entityId: appointmentId,
     entityType: "Appointment",
-    metadata: { stripeSessionId: session.id },
+    metadata: { stripeSessionId: session.id, paymentIntentId },
   })
 
   logger.info({ appointmentId, sessionId: session.id }, "Consulta confirmada tras pago exitoso")
@@ -97,7 +103,7 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
     return
   }
 
-  // Buscar el Payment por stripePaymentIntentId
+  // Buscar el Payment por stripePaymentIntentId (ya poblado tras el pago)
   const payment = await paymentRepository.findByPaymentIntentId(paymentIntentId)
 
   if (!payment) {

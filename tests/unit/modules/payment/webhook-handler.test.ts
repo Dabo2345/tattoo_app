@@ -57,12 +57,17 @@ function buildRequest(body = "{}", signature = "valid-sig"): NextRequest {
   } as unknown as NextRequest
 }
 
-function buildCheckoutEvent(appointmentId: string, sessionId = "cs_test_123") {
+function buildCheckoutEvent(
+  appointmentId: string,
+  sessionId = "cs_test_123",
+  paymentIntentId = "pi_test_456"
+) {
   return {
     type: "checkout.session.completed",
     data: {
       object: {
         id: sessionId,
+        payment_intent: paymentIntentId,
         metadata: { appointmentId },
       },
     },
@@ -89,10 +94,7 @@ describe("POST /api/webhooks/stripe", () => {
   })
 
   it("devuelve 400 si falta el header stripe-signature", async () => {
-    const req = buildRequest("{}", null as unknown as string)
-    // Override headers.get to return null
     const reqNoSig = {
-      ...req,
       headers: { get: () => null },
       text: async () => "{}",
     } as unknown as NextRequest
@@ -115,7 +117,10 @@ describe("POST /api/webhooks/stripe", () => {
 
   it("confirma el appointment y crea AuditLog en checkout.session.completed", async () => {
     const appointmentId = "appt-001"
-    mockConstructEvent.mockReturnValue(buildCheckoutEvent(appointmentId) as never)
+    const paymentIntentId = "pi_test_456"
+    mockConstructEvent.mockReturnValue(
+      buildCheckoutEvent(appointmentId, "cs_test_123", paymentIntentId) as never
+    )
     mockFindByAppointmentId.mockResolvedValue({ status: "PENDING" } as never)
     mockConfirmPayment.mockResolvedValue([{ count: 1 }, { count: 1 }] as never)
     mockCreateAuditLog.mockResolvedValue({} as never)
@@ -124,7 +129,7 @@ describe("POST /api/webhooks/stripe", () => {
     const res = await POST(req)
 
     expect(res.status).toBe(200)
-    expect(mockConfirmPayment).toHaveBeenCalledWith(appointmentId)
+    expect(mockConfirmPayment).toHaveBeenCalledWith(appointmentId, paymentIntentId)
     expect(mockCreateAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "CONSULTATION_CONFIRMED",
