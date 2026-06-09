@@ -180,11 +180,44 @@ describe("AppointmentManager", () => {
         `/api/appointments/${confirmed.id}/reschedule`,
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ newStartAt: slots[0].startsAt }),
+          body: JSON.stringify({ newStartAt: slots[0]!.startsAt }),
         })
       )
     })
 
     expect(screen.getByText(/cita reprogramada/i)).toBeInTheDocument()
+  })
+
+  it("reschedule muestra error si la API falla", async () => {
+    const slots = [{ startsAt: "2026-07-20T09:00:00.000Z", endsAt: "2026-07-20T10:00:00.000Z" }]
+
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: slots }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ success: false, error: { message: "Slot no disponible" } }),
+      } as Response)
+
+    render(<AppointmentManager appointment={confirmed} />)
+
+    fireEvent.click(screen.getByRole("button", { name: /reprogramar/i }))
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(/nueva fecha/i), {
+        target: { value: "2026-07-20" },
+      })
+    })
+
+    await waitFor(() => screen.getByText("09:00"))
+
+    fireEvent.click(screen.getByText("09:00"))
+    fireEvent.click(screen.getByRole("button", { name: /confirmar reprogramación/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/slot no disponible/i)).toBeInTheDocument()
+    })
   })
 })

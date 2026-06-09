@@ -5,6 +5,7 @@ import {
   AppointmentManager,
   type AppointmentData,
 } from "@/modules/booking/components/appointment-manager"
+import { RequestLinkForm } from "@/modules/booking/components/request-link-form"
 
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
@@ -49,14 +50,12 @@ function ExpiredView() {
         🔗
       </p>
       <h1 className="text-h2 text-foreground mb-3">Enlace expirado</h1>
-      <p className="text-body text-foreground-secondary mb-8">
+      <p className="text-body text-foreground-secondary">
         Este enlace de gestión ha expirado. Los enlaces tienen una validez de 2 horas.
         <br />
-        Solicita uno nuevo introduciendo tu email.
+        Introduce tu email para recibir uno nuevo.
       </p>
-      <Button asChild variant="outline">
-        <Link href="mailto:info@tattoostudio.com">Contactar con el estudio</Link>
-      </Button>
+      <RequestLinkForm />
     </div>
   )
 }

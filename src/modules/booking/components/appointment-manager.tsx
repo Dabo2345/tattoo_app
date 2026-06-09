@@ -28,7 +28,6 @@ type ManagerView =
   | "cancel-error"
   | "reschedule-date"
   | "reschedule-slot"
-  | "reschedule-confirm"
   | "reschedule-success"
   | "reschedule-error"
 
@@ -130,7 +129,7 @@ export function AppointmentManager({ appointment }: { appointment: AppointmentDa
     const params = new URLSearchParams({
       from: from.toISOString(),
       to: to.toISOString(),
-      type: "consultation",
+      type: appointment.type.toLowerCase(),
     })
 
     fetch(`/api/availability?${params.toString()}`)
