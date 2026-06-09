@@ -38,3 +38,21 @@ export interface ValidateMagicLinkResult {
     }
   }
 }
+
+export interface CreateSessionLinkInput {
+  appointmentId: string
+  sessionDurationMinutes: number
+  artistNotes?: string
+}
+
+export interface CreateSessionLinkResult {
+  /** Token plano para incluir en la URL. Nunca se almacena en DB. */
+  token: string
+  expiresAt: Date
+}
+
+export interface ValidateSessionLinkResult {
+  expiresAt: Date
+  sessionDurationMinutes: number
+  artistNotes: string | null
+}

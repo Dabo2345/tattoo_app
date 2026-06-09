@@ -106,4 +106,36 @@ export const bookingRepository = {
       },
     })
   },
+
+  /**
+   * Crea un SessionLink para un Appointment.
+   * Solo almacena el hash del token (AUTH-001 §13). Un solo SessionLink por appointment.
+   */
+  async createSessionLink(data: {
+    appointmentId: string
+    tokenHash: string
+    expiresAt: Date
+    sessionDurationMinutes: number
+    artistNotes?: string
+  }) {
+    return prisma.sessionLink.create({
+      data: {
+        appointmentId: data.appointmentId,
+        tokenHash: data.tokenHash,
+        expiresAt: data.expiresAt,
+        sessionDurationMinutes: data.sessionDurationMinutes,
+        artistNotes: data.artistNotes,
+      },
+    })
+  },
+
+  /**
+   * Busca un SessionLink por tokenHash.
+   * Usado en validateSessionLink y en el flujo de booking (#027).
+   */
+  async findSessionLinkByHash(tokenHash: string) {
+    return prisma.sessionLink.findUnique({
+      where: { tokenHash },
+    })
+  },
 }
