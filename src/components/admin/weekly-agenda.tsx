@@ -41,6 +41,8 @@ const STATUS_CARD_STYLES: Record<Appointment["status"], string> = {
   NO_SHOW: "text-red-400 border-red-500/40 bg-red-500/10",
 }
 
+const ACTIONABLE_STATUSES: Appointment["status"][] = ["PENDING_PAYMENT", "CONFIRMED"]
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getMondayOfWeek(date: Date): Date {
@@ -142,7 +144,64 @@ function AppointmentCard({
 
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 
-function DetailPanel({ appointment, onClose }: { appointment: Appointment; onClose: () => void }) {
+type PanelView = "detail" | "cancel-confirm" | "reschedule-form" | "reschedule-confirm"
+
+function DetailPanel({
+  appointment,
+  onClose,
+  onMutate,
+}: {
+  appointment: Appointment
+  onClose: () => void
+  onMutate: () => void
+}) {
+  const [view, setView] = useState<PanelView>("detail")
+  const [newStartAt, setNewStartAt] = useState("")
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const isActionable = ACTIONABLE_STATUSES.includes(appointment.status)
+
+  async function handleCancel() {
+    setActionLoading(true)
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/admin/appointments/${appointment.id}/cancel`, {
+        method: "POST",
+      })
+      const body = await res.json()
+      if (!res.ok || !body.success) {
+        throw new Error(body?.error?.message ?? "Error al cancelar la cita")
+      }
+      onMutate()
+      onClose()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Error de red")
+      setActionLoading(false)
+    }
+  }
+
+  async function handleReschedule() {
+    setActionLoading(true)
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/admin/appointments/${appointment.id}/reschedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newStartAt: new Date(newStartAt).toISOString() }),
+      })
+      const body = await res.json()
+      if (!res.ok || !body.success) {
+        throw new Error(body?.error?.message ?? "Error al reprogramar la cita")
+      }
+      onMutate()
+      onClose()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Error de red")
+      setActionLoading(false)
+    }
+  }
+
   return (
     <div
       className="mt-6 rounded-lg border border-border bg-surface p-5 relative"
@@ -157,40 +216,191 @@ function DetailPanel({ appointment, onClose }: { appointment: Appointment; onClo
         <X className="h-4 w-4" aria-hidden="true" />
       </button>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <p className="text-xs text-foreground-muted uppercase tracking-wide mb-1">Cliente</p>
-          <p className="text-sm font-medium text-foreground">{appointment.client.name}</p>
-          <p className="text-xs text-foreground-secondary">{appointment.client.email}</p>
-          {appointment.client.phone && (
-            <p className="text-xs text-foreground-secondary">{appointment.client.phone}</p>
+      {/* ── Detail view ──────────────────────────────────────────── */}
+      {view === "detail" && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-foreground-muted uppercase tracking-wide mb-1">Cliente</p>
+              <p className="text-sm font-medium text-foreground">{appointment.client.name}</p>
+              <p className="text-xs text-foreground-secondary">{appointment.client.email}</p>
+              {appointment.client.phone && (
+                <p className="text-xs text-foreground-secondary">{appointment.client.phone}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-foreground-muted uppercase tracking-wide mb-1">
+                Fecha y hora
+              </p>
+              <p className="text-sm text-foreground capitalize">
+                {formatDateTime(appointment.startsAt)}
+              </p>
+              <p className="text-xs text-foreground-secondary mt-0.5">
+                hasta {formatTime(appointment.endsAt)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-foreground-muted uppercase tracking-wide mb-1">Tipo</p>
+              <p className="text-sm text-foreground">{TYPE_LABELS[appointment.type]}</p>
+            </div>
+            <div>
+              <p className="text-xs text-foreground-muted uppercase tracking-wide mb-1">Estado</p>
+              <p
+                className={cn(
+                  "text-sm font-medium",
+                  STATUS_CARD_STYLES[appointment.status].split(" ")[0]
+                )}
+              >
+                {STATUS_LABELS[appointment.status]}
+              </p>
+            </div>
+          </div>
+
+          {isActionable && (
+            <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+              <Button variant="outline" size="sm" onClick={() => setView("reschedule-form")}>
+                Reprogramar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                onClick={() => setView("cancel-confirm")}
+              >
+                Cancelar cita
+              </Button>
+            </div>
           )}
-        </div>
+        </>
+      )}
+
+      {/* ── Cancel confirmation ───────────────────────────────────── */}
+      {view === "cancel-confirm" && (
         <div>
-          <p className="text-xs text-foreground-muted uppercase tracking-wide mb-1">Fecha y hora</p>
-          <p className="text-sm text-foreground capitalize">
-            {formatDateTime(appointment.startsAt)}
+          <p className="text-sm font-medium text-foreground mb-1">
+            ¿Cancelar la cita de {appointment.client.name}?
           </p>
-          <p className="text-xs text-foreground-secondary mt-0.5">
-            hasta {formatTime(appointment.endsAt)}
+          <p className="text-xs text-foreground-secondary mb-4">
+            Esta acción no se puede deshacer. El depósito puede ser retenido si la cita es en menos
+            de 4 días.
           </p>
+          {actionError && (
+            <p role="alert" className="text-xs text-destructive mb-3">
+              {actionError}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={handleCancel}
+              disabled={actionLoading}
+              aria-label="Confirmar cancelación"
+            >
+              {actionLoading ? "Cancelando..." : "Confirmar cancelación"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setView("detail")
+                setActionError(null)
+              }}
+              disabled={actionLoading}
+            >
+              Volver
+            </Button>
+          </div>
         </div>
+      )}
+
+      {/* ── Reschedule form ───────────────────────────────────────── */}
+      {view === "reschedule-form" && (
         <div>
-          <p className="text-xs text-foreground-muted uppercase tracking-wide mb-1">Tipo</p>
-          <p className="text-sm text-foreground">{TYPE_LABELS[appointment.type]}</p>
-        </div>
-        <div>
-          <p className="text-xs text-foreground-muted uppercase tracking-wide mb-1">Estado</p>
-          <p
-            className={cn(
-              "text-sm font-medium",
-              STATUS_CARD_STYLES[appointment.status].split(" ")[0]
-            )}
-          >
-            {STATUS_LABELS[appointment.status]}
+          <p className="text-sm font-medium text-foreground mb-3">
+            Nueva fecha y hora para {appointment.client.name}
           </p>
+          <div className="mb-4">
+            <label
+              htmlFor="new-start-at"
+              className="text-xs text-foreground-muted uppercase tracking-wide mb-1 block"
+            >
+              Fecha y hora
+            </label>
+            <input
+              id="new-start-at"
+              type="datetime-local"
+              value={newStartAt}
+              onChange={(e) => setNewStartAt(e.target.value)}
+              className="w-full px-3 py-2 bg-background border border-border rounded text-foreground text-sm focus:outline-none focus:border-accent transition-colors"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                setView("reschedule-confirm")
+                setActionError(null)
+              }}
+              disabled={!newStartAt}
+            >
+              Siguiente
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setView("detail")
+                setActionError(null)
+              }}
+            >
+              Volver
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Reschedule confirmation ───────────────────────────────── */}
+      {view === "reschedule-confirm" && (
+        <div>
+          <p className="text-sm font-medium text-foreground mb-1">¿Confirmar reprogramación?</p>
+          <p className="text-xs text-foreground-secondary mb-1">
+            Cita actual:{" "}
+            <span className="text-foreground capitalize">
+              {formatDateTime(appointment.startsAt)}
+            </span>
+          </p>
+          <p className="text-xs text-foreground-secondary mb-4">
+            Nueva fecha: <span className="text-foreground">{newStartAt.replace("T", " ")}</span>
+          </p>
+          {actionError && (
+            <p role="alert" className="text-xs text-destructive mb-3">
+              {actionError}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleReschedule}
+              disabled={actionLoading}
+              aria-label="Confirmar reprogramación"
+            >
+              {actionLoading ? "Reprogramando..." : "Confirmar reprogramación"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setView("reschedule-form")
+                setActionError(null)
+              }}
+              disabled={actionLoading}
+            >
+              Volver
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -357,6 +567,7 @@ export function WeeklyAgenda() {
         <DetailPanel
           appointment={selectedAppointment}
           onClose={() => setSelectedAppointment(null)}
+          onMutate={() => fetchAppointments(currentWeekStart)}
         />
       )}
     </div>
