@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, X, CalendarDays } from "lucide-react"
+import { ChevronLeft, ChevronRight, X, CalendarDays, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -42,6 +42,7 @@ const STATUS_CARD_STYLES: Record<Appointment["status"], string> = {
 }
 
 const ACTIONABLE_STATUSES: Appointment["status"][] = ["PENDING_PAYMENT", "CONFIRMED"]
+const SESSION_LINK_STATUSES: Appointment["status"][] = ["CONFIRMED", "COMPLETED"]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -144,7 +145,13 @@ function AppointmentCard({
 
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 
-type PanelView = "detail" | "cancel-confirm" | "reschedule-form" | "reschedule-confirm"
+type PanelView =
+  | "detail"
+  | "cancel-confirm"
+  | "reschedule-form"
+  | "reschedule-confirm"
+  | "session-link-form"
+  | "session-link-result"
 
 function DetailPanel({
   appointment,
@@ -157,10 +164,16 @@ function DetailPanel({
 }) {
   const [view, setView] = useState<PanelView>("detail")
   const [newStartAt, setNewStartAt] = useState("")
+  const [durationMinutes, setDurationMinutes] = useState("60")
+  const [sessionNotes, setSessionNotes] = useState("")
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const isActionable = ACTIONABLE_STATUSES.includes(appointment.status)
+  const canGenerateSessionLink =
+    appointment.type === "CONSULTATION" && SESSION_LINK_STATUSES.includes(appointment.status)
 
   async function handleCancel() {
     setActionLoading(true)
@@ -200,6 +213,39 @@ function DetailPanel({
       setActionError(err instanceof Error ? err.message : "Error de red")
       setActionLoading(false)
     }
+  }
+
+  async function handleGenerateSessionLink() {
+    setActionLoading(true)
+    setActionError(null)
+    try {
+      const res = await fetch("/api/admin/session-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consultationId: appointment.id,
+          durationMinutes: parseInt(durationMinutes, 10),
+          notes: sessionNotes || undefined,
+        }),
+      })
+      const body = await res.json()
+      if (!res.ok || !body.success) {
+        throw new Error(body?.error?.message ?? "Error al generar el SessionLink")
+      }
+      setGeneratedLink(body.data.sessionLink.url)
+      setView("session-link-result")
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Error de red")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleCopyLink() {
+    if (!generatedLink) return
+    await navigator.clipboard.writeText(generatedLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -256,19 +302,28 @@ function DetailPanel({
             </div>
           </div>
 
-          {isActionable && (
-            <div className="flex gap-2 mt-4 pt-4 border-t border-border">
-              <Button variant="outline" size="sm" onClick={() => setView("reschedule-form")}>
-                Reprogramar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                onClick={() => setView("cancel-confirm")}
-              >
-                Cancelar cita
-              </Button>
+          {(isActionable || canGenerateSessionLink) && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
+              {isActionable && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setView("reschedule-form")}>
+                    Reprogramar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                    onClick={() => setView("cancel-confirm")}
+                  >
+                    Cancelar cita
+                  </Button>
+                </>
+              )}
+              {canGenerateSessionLink && (
+                <Button variant="outline" size="sm" onClick={() => setView("session-link-form")}>
+                  Generar SessionLink
+                </Button>
+              )}
             </div>
           )}
         </>
@@ -399,6 +454,109 @@ function DetailPanel({
               Volver
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* ── SessionLink form ─────────────────────────────────────── */}
+      {view === "session-link-form" && (
+        <div>
+          <p className="text-sm font-medium text-foreground mb-3">
+            Generar SessionLink para {appointment.client.name}
+          </p>
+          <div className="space-y-3 mb-4">
+            <div>
+              <label
+                htmlFor="session-duration"
+                className="text-xs text-foreground-muted uppercase tracking-wide mb-1 block"
+              >
+                Duración (minutos)
+              </label>
+              <input
+                id="session-duration"
+                type="number"
+                min={30}
+                max={480}
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(e.target.value)}
+                className="w-full px-3 py-2 bg-background border border-border rounded text-foreground text-sm focus:outline-none focus:border-accent transition-colors"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="session-notes"
+                className="text-xs text-foreground-muted uppercase tracking-wide mb-1 block"
+              >
+                Notas del artista (opcional)
+              </label>
+              <input
+                id="session-notes"
+                type="text"
+                value={sessionNotes}
+                onChange={(e) => setSessionNotes(e.target.value)}
+                maxLength={1000}
+                placeholder="Instrucciones, referencias..."
+                className="w-full px-3 py-2 bg-background border border-border rounded text-foreground text-sm focus:outline-none focus:border-accent transition-colors"
+              />
+            </div>
+          </div>
+          {actionError && (
+            <p role="alert" className="text-xs text-destructive mb-3">
+              {actionError}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleGenerateSessionLink}
+              disabled={actionLoading || !durationMinutes}
+              aria-label="Generar link"
+            >
+              {actionLoading ? "Generando..." : "Generar link"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setView("detail")
+                setActionError(null)
+              }}
+              disabled={actionLoading}
+            >
+              Volver
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── SessionLink result ───────────────────────────────────── */}
+      {view === "session-link-result" && generatedLink && (
+        <div>
+          <p className="text-sm font-medium text-foreground mb-1">SessionLink generado</p>
+          <p className="text-xs text-foreground-secondary mb-3">
+            Envía este link a {appointment.client.name} para que reserve su sesión.
+          </p>
+          <div className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 mb-4">
+            <p
+              className="text-xs text-foreground truncate flex-1 font-mono"
+              aria-label="Link generado"
+            >
+              {generatedLink}
+            </p>
+            <button
+              onClick={handleCopyLink}
+              aria-label="Copiar link"
+              className="shrink-0 text-foreground-muted hover:text-foreground transition-colors"
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-400" aria-hidden="true" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setView("detail")}>
+            Volver al detalle
+          </Button>
         </div>
       )}
     </div>
