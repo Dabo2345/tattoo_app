@@ -138,4 +138,43 @@ export const bookingRepository = {
       where: { tokenHash },
     })
   },
+
+  /**
+   * Busca un SessionLink por tokenHash incluyendo el Appointment original.
+   * Usado en bookTattooSession para obtener el clientId y la duración.
+   */
+  async findSessionLinkWithAppointment(tokenHash: string) {
+    return prisma.sessionLink.findUnique({
+      where: { tokenHash },
+      include: { appointment: true },
+    })
+  },
+
+  /**
+   * Crea un Appointment de tipo TATTOO_SESSION en estado CONFIRMED.
+   * RB-004: TattooSessions no requieren pago online.
+   */
+  async createTattooSession(data: { clientId: string; startsAt: Date; endsAt: Date }) {
+    return prisma.appointment.create({
+      data: {
+        clientId: data.clientId,
+        type: "TATTOO_SESSION",
+        status: "CONFIRMED",
+        startsAt: data.startsAt,
+        endsAt: data.endsAt,
+        depositRequired: false,
+      },
+    })
+  },
+
+  /**
+   * Marca un SessionLink como usado (RB-005: un solo uso).
+   * Se llama inmediatamente después de crear el TattooSession appointment.
+   */
+  async markSessionLinkAsUsed(id: string) {
+    return prisma.sessionLink.update({
+      where: { id },
+      data: { usedAt: new Date() },
+    })
+  },
 }

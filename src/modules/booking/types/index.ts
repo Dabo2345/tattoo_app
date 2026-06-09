@@ -56,3 +56,7 @@ export interface ValidateSessionLinkResult {
   sessionDurationMinutes: number
   artistNotes: string | null
 }
+
+export interface BookSessionResult {
+  appointmentId: string
+}
