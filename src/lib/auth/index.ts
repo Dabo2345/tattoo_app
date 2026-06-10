@@ -43,7 +43,10 @@ export async function withAdminAuth(
   })
 
   if (!session) {
-    return Response.json({ success: false, error: "No autorizado" }, { status: 401 })
+    return Response.json(
+      { success: false, error: { code: "UNAUTHORIZED", message: "No autorizado" } },
+      { status: 401 }
+    )
   }
 
   return handler(session)
