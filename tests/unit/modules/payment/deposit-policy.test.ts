@@ -18,9 +18,9 @@ vi.mock("@/modules/payment/repositories/payment-repository", () => ({
   },
 }))
 
-vi.mock("@/modules/booking/repositories/booking-repository", () => ({
-  bookingRepository: {
-    createAuditLog: vi.fn(),
+vi.mock("@/modules/audit/services/audit-service", () => ({
+  auditService: {
+    log: vi.fn(),
   },
 }))
 
@@ -34,7 +34,7 @@ vi.mock("@/lib/sentry", () => ({
 
 import { stripe } from "@/lib/stripe/client"
 import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
-import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
 import {
   depositPolicyService,
   daysUntilAppointment,
@@ -43,7 +43,7 @@ import {
 const mockStripeRefundCreate = vi.mocked(stripe.refunds.create)
 const mockFindByAppointmentId = vi.mocked(paymentRepository.findByAppointmentId)
 const mockCreateRefundRecord = vi.mocked(paymentRepository.createRefundRecord)
-const mockCreateAuditLog = vi.mocked(bookingRepository.createAuditLog)
+const mockAuditLog = vi.mocked(auditService.log)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -92,7 +92,7 @@ describe("depositPolicyService.handleCancellation", () => {
     vi.clearAllMocks()
     mockFindByAppointmentId.mockResolvedValue(mockPayment as never)
     mockCreateRefundRecord.mockResolvedValue([{}, {}] as never)
-    mockCreateAuditLog.mockResolvedValue({} as never)
+    mockAuditLog.mockResolvedValue(undefined)
     mockStripeRefundCreate.mockResolvedValue({ id: "re_test_123" } as never)
   })
 
@@ -173,11 +173,10 @@ describe("depositPolicyService.handleCancellation", () => {
 
     await depositPolicyService.handleCancellation(appointmentId, startsAt)
 
-    expect(mockCreateAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "DEPOSIT_REFUNDED",
-        entityId: appointmentId,
-      })
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "DEPOSIT_REFUNDED",
+      appointmentId,
+      expect.objectContaining({ entityType: "Appointment" })
     )
   })
 
@@ -186,11 +185,10 @@ describe("depositPolicyService.handleCancellation", () => {
 
     await depositPolicyService.handleCancellation(appointmentId, startsAt)
 
-    expect(mockCreateAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "DEPOSIT_RETAINED",
-        entityId: appointmentId,
-      })
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "DEPOSIT_RETAINED",
+      appointmentId,
+      expect.objectContaining({ entityType: "Appointment" })
     )
   })
 })

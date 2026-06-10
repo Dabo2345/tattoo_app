@@ -4,7 +4,7 @@ import { env } from "@/lib/env"
 import { logger } from "@/lib/logger"
 import { captureException } from "@/lib/sentry"
 import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
-import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
 import type Stripe from "stripe"
 
 /**
@@ -82,9 +82,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
 
   await paymentRepository.confirmPayment(appointmentId, paymentIntentId)
 
-  await bookingRepository.createAuditLog({
-    action: "CONSULTATION_CONFIRMED",
-    entityId: appointmentId,
+  await auditService.log("CONSULTATION_CONFIRMED", appointmentId, {
     entityType: "Appointment",
     metadata: { stripeSessionId: session.id, paymentIntentId },
   })

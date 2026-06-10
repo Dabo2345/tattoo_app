@@ -19,9 +19,9 @@ vi.mock("@/modules/payment/repositories/payment-repository", () => ({
   },
 }))
 
-vi.mock("@/modules/booking/repositories/booking-repository", () => ({
-  bookingRepository: {
-    createAuditLog: vi.fn(),
+vi.mock("@/modules/audit/services/audit-service", () => ({
+  auditService: {
+    log: vi.fn(),
   },
 }))
 
@@ -36,7 +36,7 @@ vi.mock("@/lib/sentry", () => ({
 import { POST } from "@/app/api/webhooks/stripe/route"
 import { stripe } from "@/lib/stripe/client"
 import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
-import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
 import type { NextRequest } from "next/server"
 
 const mockConstructEvent = vi.mocked(stripe.webhooks.constructEvent)
@@ -44,7 +44,7 @@ const mockFindByAppointmentId = vi.mocked(paymentRepository.findByAppointmentId)
 const mockFindByPaymentIntentId = vi.mocked(paymentRepository.findByPaymentIntentId)
 const mockConfirmPayment = vi.mocked(paymentRepository.confirmPayment)
 const mockRefundPayment = vi.mocked(paymentRepository.refundPayment)
-const mockCreateAuditLog = vi.mocked(bookingRepository.createAuditLog)
+const mockAuditLog = vi.mocked(auditService.log)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -123,19 +123,17 @@ describe("POST /api/webhooks/stripe", () => {
     )
     mockFindByAppointmentId.mockResolvedValue({ status: "PENDING" } as never)
     mockConfirmPayment.mockResolvedValue([{ count: 1 }, { count: 1 }] as never)
-    mockCreateAuditLog.mockResolvedValue({} as never)
+    mockAuditLog.mockResolvedValue(undefined)
 
     const req = buildRequest()
     const res = await POST(req)
 
     expect(res.status).toBe(200)
     expect(mockConfirmPayment).toHaveBeenCalledWith(appointmentId, paymentIntentId)
-    expect(mockCreateAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "CONSULTATION_CONFIRMED",
-        entityId: appointmentId,
-        entityType: "Appointment",
-      })
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "CONSULTATION_CONFIRMED",
+      appointmentId,
+      expect.objectContaining({ entityType: "Appointment" })
     )
   })
 
@@ -149,7 +147,7 @@ describe("POST /api/webhooks/stripe", () => {
 
     expect(res.status).toBe(200)
     expect(mockConfirmPayment).not.toHaveBeenCalled()
-    expect(mockCreateAuditLog).not.toHaveBeenCalled()
+    expect(mockAuditLog).not.toHaveBeenCalled()
   })
 
   it("responde 200 en eventos desconocidos sin modificar datos", async () => {

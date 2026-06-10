@@ -6,6 +6,7 @@ import { createApiResponse } from "@/lib/api/response"
 import { AppointmentNotFoundError, LinkExpiredError } from "@/lib/api/errors"
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
+import { auditService } from "@/modules/audit/services/audit-service"
 
 const bodySchema = z.object({
   magicLinkToken: z.string().min(1, "magicLinkToken es obligatorio"),
@@ -63,9 +64,7 @@ export const POST = withErrorHandler(
     // Cancelar el appointment
     await bookingRepository.cancelAppointment(appointmentId)
 
-    await bookingRepository.createAuditLog({
-      action: "APPOINTMENT_CANCELLED",
-      entityId: appointmentId,
+    await auditService.log("APPOINTMENT_CANCELLED", appointmentId, {
       entityType: "Appointment",
       clientId: appointment.clientId,
       metadata: {
