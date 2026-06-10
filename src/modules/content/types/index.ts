@@ -10,3 +10,22 @@ export interface ArtistProfile {
   instagram: string | null
   location: string
 }
+
+export interface WorkingHours {
+  day: string
+  hours: string
+}
+
+export interface StudioInfo {
+  name: string
+  tagline: string
+  description: string
+  address: string
+  city: string
+  phone: string
+  email: string
+  workingHours: WorkingHours[]
+  parkingInfo: string | null
+  accessibilityInfo: string | null
+  hygieneInfo: string
+}
