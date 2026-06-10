@@ -2,7 +2,7 @@ import { defineConfig } from "prisma/config"
 
 export default defineConfig({
   datasource: {
-    // URL para el runtime (pooling con PgBouncer en Supabase)
+    // URL con pooling para runtime (PgBouncer en Supabase, puerto 6543)
     url: process.env.DATABASE_URL ?? "",
   },
 })

@@ -23,14 +23,20 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
     "db:create-admin": "tsx scripts/create-admin.ts",
+    "setup": "tsx scripts/setup-dev.ts",
     "prepare": "husky"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@radix-ui/react-slot": "^1.2.5",
     "@sentry/nextjs": "^10.56.0",
+    "@supabase/supabase-js": "^2.107.0",
     "@tailwindcss/postcss": "^4.3.0",
+    "@tanstack/react-query": "^5.101.0",
     "better-auth": "^1.6.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -40,6 +46,7 @@
     "pino": "^10.3.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "stripe": "^22.2.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0",
     "zod": "^4.4.3"

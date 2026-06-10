@@ -1,6 +1,18 @@
-import { PrismaClient } from "@prisma/client"
+import { config } from "dotenv"
+import path from "path"
 
-const prisma = new PrismaClient()
+config({ path: path.resolve(process.cwd(), ".env.local") })
+
+import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const prisma = new PrismaClient({ adapter })
+
+// IDs singleton (deben coincidir con los exportados en las actions correspondientes)
+const ARTIST_PROFILE_ID = "00000000-0000-0000-0000-000000000001"
+const STUDIO_INFO_ID = "00000000-0000-0000-0000-000000000002"
+const STUDIO_CONFIG_ID = "00000000-0000-0000-0000-000000000003"
 
 async function main() {
   console.log("🌱 Iniciando seed...")
@@ -74,6 +86,60 @@ async function main() {
   })
 
   console.log(`✅ Appointment de prueba: ${appointment.id}`)
+
+  // ArtistProfile singleton
+  await prisma.artistProfile.upsert({
+    where: { id: ARTIST_PROFILE_ID },
+    update: {},
+    create: {
+      id: ARTIST_PROFILE_ID,
+      name: "Nombre del artista",
+      bio: "Aquí va la biografía del artista. Edítala desde el panel de administración.",
+      specialties: ["Realismo", "Blackwork"],
+      instagramHandle: null,
+      yearsOfExperience: null,
+    },
+  })
+
+  console.log("✅ ArtistProfile singleton creado")
+
+  // StudioInfo singleton
+  await prisma.studioInfo.upsert({
+    where: { id: STUDIO_INFO_ID },
+    update: {},
+    create: {
+      id: STUDIO_INFO_ID,
+      name: "Nombre del estudio",
+      description: "Descripción del estudio. Edítala desde el panel de administración.",
+      address: "Calle Ejemplo, 1",
+      city: "Madrid",
+      phone: "+34600000000",
+      email: "contacto@estudio.com",
+      instagramHandle: null,
+      googleMapsUrl: null,
+    },
+  })
+
+  console.log("✅ StudioInfo singleton creado")
+
+  // StudioConfig singleton
+  await prisma.studioConfig.upsert({
+    where: { id: STUDIO_CONFIG_ID },
+    update: {},
+    create: {
+      id: STUDIO_CONFIG_ID,
+      workingStartHour: 10,
+      workingStartMinute: 0,
+      workingEndHour: 20,
+      workingEndMinute: 0,
+      slotDurationMinutes: 30,
+      consultationDurationMinutes: 60,
+      depositAmount: 50.0,
+      breaks: [],
+    },
+  })
+
+  console.log("✅ StudioConfig singleton creado")
   console.log("🎉 Seed completado exitosamente")
 }
 

@@ -131,15 +131,16 @@ model MagicLink {
 }
 
 model Payment {
-  id                    String        @id @default(uuid())
-  appointmentId         String        @unique
-  stripePaymentIntentId String        @unique
-  amount                Decimal       @db.Decimal(10, 2)
-  currency              String        @default("eur")
-  status                PaymentStatus @default(PENDING)
-  paidAt                DateTime?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  id                      String        @id @default(uuid())
+  appointmentId           String        @unique
+  stripeCheckoutSessionId String        @unique
+  stripePaymentIntentId   String?       @unique
+  amount                  Decimal       @db.Decimal(10, 2)
+  currency                String        @default("eur")
+  status                  PaymentStatus @default(PENDING)
+  paidAt                  DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
   appointment Appointment @relation(fields: [appointmentId], references: [id])
   refund      Refund?
@@ -236,6 +237,53 @@ model AuditLog {
   @@index([entityId, entityType])
   @@index([adminUserId])
   @@map("audit_logs")
+}
+
+// ─── CONTENIDO PÚBLICO (#044) ────────────────────────────────────────────────
+
+model ArtistProfile {
+  id                String   @id @default(uuid())
+  name              String
+  bio               String   @db.Text
+  specialties       String[]
+  instagramHandle   String?
+  yearsOfExperience Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("artist_profile")
+}
+
+model StudioInfo {
+  id              String   @id @default(uuid())
+  name            String
+  description     String   @db.Text
+  address         String
+  city            String
+  phone           String
+  email           String
+  instagramHandle String?
+  googleMapsUrl   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("studio_info")
+}
+
+model StudioConfig {
+  id                          String   @id @default(uuid())
+  workingStartHour            Int      @default(10)
+  workingStartMinute          Int      @default(0)
+  workingEndHour              Int      @default(20)
+  workingEndMinute            Int      @default(0)
+  slotDurationMinutes         Int      @default(30)
+  consultationDurationMinutes Int      @default(60)
+  depositAmount               Decimal  @default(50.00) @db.Decimal(10, 2)
+  breaks                      Json     @default("[]")
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@map("studio_config")
 }
 
 // ─── BETTER AUTH — modelos gestionados por el framework (#010) ───────────────

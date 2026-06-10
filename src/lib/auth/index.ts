@@ -31,20 +31,4 @@ export const auth = betterAuth({
 })
 
 export type Session = typeof auth.$Infer.Session
-
-// ─── Helper para proteger Route Handlers ─────────────────────────────────────
-
-export async function withAdminAuth(
-  request: Request,
-  handler: (session: Session) => Promise<Response>
-): Promise<Response> {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
-
-  if (!session) {
-    return Response.json({ success: false, error: "No autorizado" }, { status: 401 })
-  }
-
-  return handler(session)
-}
+// withAdminAuth para Route Handlers está en @/lib/api/middleware (#011)
