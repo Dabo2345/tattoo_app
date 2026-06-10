@@ -31,4 +31,24 @@ export const auth = betterAuth({
 })
 
 export type Session = typeof auth.$Infer.Session
-// withAdminAuth para Route Handlers está en @/lib/api/middleware (#011)
+
+// ─── Helper para Route Handlers admin que gestionan sus propios errores ───────
+// Los Route Handlers del módulo admin (#037-#045) usan este helper directamente.
+// Los nuevos Route Handlers deben usar withAdminAuth de @/lib/api/middleware,
+// que añade withErrorHandler con manejo centralizado de Zod/Prisma/DomainError.
+
+export async function withAdminAuth(
+  request: Request,
+  handler: (session: Session) => Promise<Response>
+): Promise<Response> {
+  const session = await auth.api.getSession({ headers: request.headers })
+
+  if (!session) {
+    return Response.json(
+      { success: false, error: { code: "UNAUTHORIZED", message: "No autorizado" } },
+      { status: 401 }
+    )
+  }
+
+  return handler(session)
+}
