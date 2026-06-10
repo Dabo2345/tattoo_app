@@ -239,6 +239,37 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// ─── CONTENIDO PÚBLICO (#044) ────────────────────────────────────────────────
+
+model ArtistProfile {
+  id                String   @id @default(uuid())
+  name              String
+  bio               String   @db.Text
+  specialties       String[]
+  instagramHandle   String?
+  yearsOfExperience Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("artist_profile")
+}
+
+model StudioInfo {
+  id              String   @id @default(uuid())
+  name            String
+  description     String   @db.Text
+  address         String
+  city            String
+  phone           String
+  email           String
+  instagramHandle String?
+  googleMapsUrl   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("studio_info")
+}
+
 // ─── BETTER AUTH — modelos gestionados por el framework (#010) ───────────────
 
 model User {
