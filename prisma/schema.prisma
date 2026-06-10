@@ -270,6 +270,22 @@ model StudioInfo {
   @@map("studio_info")
 }
 
+model StudioConfig {
+  id                          String   @id @default(uuid())
+  workingStartHour            Int      @default(10)
+  workingStartMinute          Int      @default(0)
+  workingEndHour              Int      @default(20)
+  workingEndMinute            Int      @default(0)
+  slotDurationMinutes         Int      @default(30)
+  consultationDurationMinutes Int      @default(60)
+  depositAmount               Decimal  @default(50.00) @db.Decimal(10, 2)
+  breaks                      Json     @default("[]")
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@map("studio_config")
+}
+
 // ─── BETTER AUTH — modelos gestionados por el framework (#010) ───────────────
 
 model User {

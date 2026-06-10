@@ -9,9 +9,10 @@ import { PrismaPg } from "@prisma/adapter-pg"
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
 const prisma = new PrismaClient({ adapter })
 
-// IDs singleton (deben coincidir con ARTIST_PROFILE_ID y STUDIO_INFO_ID en actions.ts)
+// IDs singleton (deben coincidir con los exportados en las actions correspondientes)
 const ARTIST_PROFILE_ID = "00000000-0000-0000-0000-000000000001"
 const STUDIO_INFO_ID = "00000000-0000-0000-0000-000000000002"
+const STUDIO_CONFIG_ID = "00000000-0000-0000-0000-000000000003"
 
 async function main() {
   console.log("🌱 Iniciando seed...")
@@ -120,6 +121,25 @@ async function main() {
   })
 
   console.log("✅ StudioInfo singleton creado")
+
+  // StudioConfig singleton
+  await prisma.studioConfig.upsert({
+    where: { id: STUDIO_CONFIG_ID },
+    update: {},
+    create: {
+      id: STUDIO_CONFIG_ID,
+      workingStartHour: 10,
+      workingStartMinute: 0,
+      workingEndHour: 20,
+      workingEndMinute: 0,
+      slotDurationMinutes: 30,
+      consultationDurationMinutes: 60,
+      depositAmount: 50.0,
+      breaks: [],
+    },
+  })
+
+  console.log("✅ StudioConfig singleton creado")
   console.log("🎉 Seed completado exitosamente")
 }
 
