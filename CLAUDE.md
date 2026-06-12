@@ -1,6 +1,6 @@
 # CLAUDE.md — EXECUTION CONTROL SYSTEM
 
-> Versión: 2.0 | Fecha: 2026-06-06 | Estado: ACTIVO Y OBLIGATORIO
+> Versión: 3.0 | Fecha: 2026-06-12 | Estado: ACTIVO Y OBLIGATORIO
 
 ---
 
@@ -51,12 +51,15 @@ Todo trabajo sigue este flujo exacto. Sin excepciones.
 Issue creada en GitHub (PM-001)
         ↓
 ISSUE DOC creado en /issues-docs/
+  └─ incluye sección DOCUMENTACIÓN AFECTADA
         ↓
 Claude lee ISSUE DOC completo
         ↓
 Claude implementa SOLO lo descrito
         ↓
 Claude añade tests requeridos
+        ↓
+Claude actualiza docs en /docs/ (ver DOCUMENTACIÓN AFECTADA del ISSUE DOC)
         ↓
 Claude crea PR con descripción completa
         ↓
@@ -110,14 +113,15 @@ Cada ISSUE DOC debe contener:
 2. **OBJETIVO** — Qué construir exactamente
 3. **SCOPE** — Qué está incluido
 4. **ANTI-SCOPE** — Qué no está permitido
-5. **ARCHIVOS AFECTADOS** — Lista explícita
+5. **ARCHIVOS AFECTADOS** — Lista explícita (código + docs)
 6. **FLUJO DE EJECUCIÓN** — Pasos obligatorios
 7. **REGLAS DE NEGOCIO** — Reglas del dominio aplicables
 8. **CRITERIOS DE ACEPTACIÓN** — Checklist verificable
 9. **EDGE CASES** — Casos límite obligatorios
 10. **TESTS REQUERIDOS** — Unit, integration, e2e
-11. **DEPENDENCIAS** — Issues que deben completarse antes
-12. **DEFINITION OF DONE** — Checklist de cierre
+11. **DOCUMENTACIÓN AFECTADA** — Qué archivos de `/docs/` actualizar al cerrar
+12. **DEPENDENCIAS** — Issues que deben completarse antes
+13. **DEFINITION OF DONE** — Checklist de cierre (incluye "docs actualizados")
 
 ---
 
@@ -193,6 +197,46 @@ Ninguna issue puede cerrarse sin:
 
 ---
 
+# SISTEMA DE DOCUMENTACIÓN VIVA
+
+## Principio
+
+> El código y la documentación deben estar siempre sincronizados.
+> Si el código cambia y la documentación no → la documentación miente.
+
+## Capas de documentación
+
+| Capa | Ubicación | Contenido | Actualizar cuando |
+|------|-----------|-----------|-------------------|
+| **Reglas de ejecución** | `CLAUDE.md` | Cómo trabaja Claude en este proyecto | Cambia el proceso |
+| **Docs de arquitectura** | `/docs/` | Cómo funciona el sistema ahora | Se cierra cualquier issue |
+| **ISSUE DOCs** | `/issues-docs/` | Instrucciones de implementación por issue | Al crear la issue |
+
+## Qué doc actualizar según el tipo de cambio
+
+| Tipo de cambio | Documento a actualizar |
+|----------------|------------------------|
+| Nueva API o cambio de contrato | `API-001` |
+| Cambio en reglas de negocio | `DATA-002` |
+| Nuevo servicio o módulo backend | `BACK-001` |
+| Cambio en schema de DB | `DATA-001` |
+| Cambio en autenticación o seguridad | `AUTH-001` |
+| Cambio en sistema de notificaciones | `NOTIF-001` |
+| Nueva variable de entorno | `ENV-001` |
+| Cambio en estrategia de tests | `TEST-001` |
+| Cambio en CI/CD | `DEVOPS-001` |
+| Cambio en componentes o diseño UI | `UI-001` o `FRONT-001` |
+| Cambio en flujos de usuario | `UX-001` |
+
+## Regla de Documentation-First en bugfixes
+
+Cuando se corrige un bug, el ISSUE DOC debe incluir:
+- **Root cause**: por qué ocurrió el bug
+- **Fix aplicado**: qué se cambió y por qué
+- **Doc actualizado**: qué sección del doc de arquitectura refleja el comportamiento correcto ahora
+
+---
+
 # OUTPUT OBLIGATORIO AL COMPLETAR ISSUE
 
 Al terminar una issue, Claude debe responder:
@@ -201,10 +245,14 @@ Al terminar una issue, Claude debe responder:
 ## Issue Completada: #[ID]
 
 ### Archivos modificados
-- [lista de archivos]
+- [lista de archivos de código]
+- [lista de archivos de /docs/ actualizados]
 
 ### Tests añadidos
 - [lista de tests]
+
+### Documentación actualizada
+- [doc actualizado] — [sección y qué se cambió]
 
 ### Cómo probarlo
 [instrucciones de prueba manual]
@@ -241,5 +289,6 @@ Este sistema es determinista.
 Sin Issue → No existe
 Sin ISSUE DOC → No se empieza
 Sin tests → No se cierra
+Sin docs actualizados → No se cierra
 Sin CI verde → No se mergea
 ```
