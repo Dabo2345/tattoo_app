@@ -191,4 +191,24 @@ describe("depositPolicyService.handleCancellation", () => {
       expect.objectContaining({ entityType: "Appointment" })
     )
   })
+
+  it("no hay Payment en DB → lanza PaymentFailedError", async () => {
+    const startsAt = startsAtDaysFromNow(7)
+    mockFindByAppointmentId.mockResolvedValue(null)
+
+    await expect(depositPolicyService.handleCancellation(appointmentId, startsAt)).rejects.toThrow(
+      PaymentFailedError
+    )
+    expect(mockStripeRefundCreate).not.toHaveBeenCalled()
+  })
+
+  it("reprogramación con <4 días equivale a cancelación tardía — retiene depósito (RB-015)", async () => {
+    // RB-015: rescheduling <4 días usa la misma lógica que cancelación tardía
+    const startsAt = startsAtDaysFromNow(3)
+
+    const result = await depositPolicyService.handleCancellation(appointmentId, startsAt)
+
+    expect(result).toEqual({ refunded: false, reason: "too_late" })
+    expect(mockStripeRefundCreate).not.toHaveBeenCalled()
+  })
 })

@@ -210,6 +210,26 @@ describe("calendarService.getAvailableSlots", () => {
     const slots = await calendarService.getAvailableSlots(past, alsoPast)
     expect(slots.length).toBe(0)
   })
+
+  it("trunca el rango al límite de 60 días (RB-008) — no devuelve slots más allá", async () => {
+    const now = new Date()
+    const from = new Date(now)
+    from.setUTCDate(from.getUTCDate() + 59)
+    from.setUTCHours(0, 0, 0, 0)
+
+    // Solicitar hasta 70 días — debe truncarse a 60
+    const to = new Date(now)
+    to.setUTCDate(to.getUTCDate() + 70)
+
+    const slots = await calendarService.getAvailableSlots(from, to)
+
+    // Todos los slots devueltos deben tener startAt <= 60 días desde ahora
+    const maxDate = new Date(now)
+    maxDate.setUTCDate(maxDate.getUTCDate() + 60)
+    for (const slot of slots) {
+      expect(slot.startAt.getTime()).toBeLessThanOrEqual(maxDate.getTime())
+    }
+  })
 })
 
 // ─── calendarService.assertSlotAvailable ─────────────────────────────────────
@@ -248,6 +268,20 @@ describe("calendarService.assertSlotAvailable", () => {
     start.setUTCHours(8, 0, 0, 0)
     const end = new Date(start)
     end.setUTCHours(9, 0, 0, 0)
+
+    await expect(calendarService.assertSlotAvailable(start, end)).rejects.toThrow(
+      "El horario seleccionado ya no está disponible"
+    )
+  })
+
+  it("lanza SlotNotAvailableError si hay un BlockedPeriod solapado", async () => {
+    const start = new Date()
+    start.setUTCDate(start.getUTCDate() + 1)
+    start.setUTCHours(14, 0, 0, 0)
+    const end = new Date(start)
+    end.setUTCHours(15, 0, 0, 0)
+
+    mockGetBlocked.mockResolvedValue([{ startsAt: start, endsAt: end }])
 
     await expect(calendarService.assertSlotAvailable(start, end)).rejects.toThrow(
       "El horario seleccionado ya no está disponible"
