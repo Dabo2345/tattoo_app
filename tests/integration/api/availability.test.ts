@@ -38,8 +38,8 @@ describe("GET /api/availability", () => {
 
   it("devuelve 200 con los slots que devuelve el servicio", async () => {
     const slot = {
-      startAt: new Date("2026-07-01T10:00:00Z"),
-      endAt: new Date("2026-07-01T11:00:00Z"),
+      startsAt: new Date("2026-07-01T10:00:00Z"),
+      endsAt: new Date("2026-07-01T11:00:00Z"),
     }
     mockGetSlots.mockResolvedValue([slot])
 
@@ -52,7 +52,7 @@ describe("GET /api/availability", () => {
     const body = await res.json()
     expect(body.success).toBe(true)
     expect(body.data).toHaveLength(1)
-    expect(body.data[0].startAt).toBe(slot.startAt.toISOString())
+    expect(body.data[0].startsAt).toBe(slot.startsAt.toISOString())
   })
 
   it("llama a calendarService con las fechas correctas", async () => {

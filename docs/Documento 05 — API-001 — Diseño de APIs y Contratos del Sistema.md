@@ -117,8 +117,8 @@ Respuesta
 
 [
 {
-startAt,
-endAt
+startsAt,
+endsAt
 }
 ]
 

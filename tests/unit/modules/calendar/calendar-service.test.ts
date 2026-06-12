@@ -109,15 +109,15 @@ describe("generateDaySlots", () => {
   it("genera slots de 30 en 30 minutos desde las 10:00", () => {
     const date = new Date("2026-07-01T00:00:00Z")
     const slots = generateDaySlots(date)
-    expect(slots[0]?.startAt.getUTCHours()).toBe(10)
-    expect(slots[0]?.startAt.getUTCMinutes()).toBe(0)
+    expect(slots[0]?.startsAt.getUTCHours()).toBe(10)
+    expect(slots[0]?.startsAt.getUTCMinutes()).toBe(0)
   })
 
   it("el primer slot dura 60 minutos", () => {
     const date = new Date("2026-07-01T00:00:00Z")
     const slots = generateDaySlots(date)
     const first = slots[0]!
-    const diff = (first.endAt.getTime() - first.startAt.getTime()) / 60000
+    const diff = (first.endsAt.getTime() - first.startsAt.getTime()) / 60000
     expect(diff).toBe(60)
   })
 
@@ -126,10 +126,10 @@ describe("generateDaySlots", () => {
     const date = new Date("2026-07-01T00:00:00Z")
     const slots = generateDaySlots(date)
     const last = slots[slots.length - 1]!
-    expect(last.startAt.getUTCHours()).toBe(19)
-    expect(last.startAt.getUTCMinutes()).toBe(0)
-    expect(last.endAt.getUTCHours()).toBe(20)
-    expect(last.endAt.getUTCMinutes()).toBe(0)
+    expect(last.startsAt.getUTCHours()).toBe(19)
+    expect(last.startsAt.getUTCMinutes()).toBe(0)
+    expect(last.endsAt.getUTCHours()).toBe(20)
+    expect(last.endsAt.getUTCMinutes()).toBe(0)
   })
 
   it("genera 19 slots por día (10:00–19:00 cada 30min con duración 60min)", () => {
@@ -177,7 +177,7 @@ describe("calendarService.getAvailableSlots", () => {
 
     const slots = await calendarService.getAvailableSlots(tomorrow, dayAfter)
     const has10 = slots.some(
-      (s) => s.startAt.getUTCHours() === 10 && s.startAt.getUTCMinutes() === 0
+      (s) => s.startsAt.getUTCHours() === 10 && s.startsAt.getUTCMinutes() === 0
     )
     expect(has10).toBe(false)
   })
@@ -227,7 +227,7 @@ describe("calendarService.getAvailableSlots", () => {
     const maxDate = new Date(now)
     maxDate.setUTCDate(maxDate.getUTCDate() + 60)
     for (const slot of slots) {
-      expect(slot.startAt.getTime()).toBeLessThanOrEqual(maxDate.getTime())
+      expect(slot.startsAt.getTime()).toBeLessThanOrEqual(maxDate.getTime())
     }
   })
 })
