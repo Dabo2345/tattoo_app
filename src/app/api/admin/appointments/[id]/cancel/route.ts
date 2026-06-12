@@ -1,5 +1,6 @@
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 const NON_CANCELLABLE = ["CANCELLED", "COMPLETED", "NO_SHOW"] as const
 
@@ -52,6 +53,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         metadata: { refundEligible },
       },
     })
+
+    await notificationService.sendAppointmentCancelled(id)
 
     return Response.json({
       success: true,

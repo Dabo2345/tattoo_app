@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 const rescheduleBodySchema = z.object({
   newStartAt: z.string().datetime({ message: "newStartAt debe ser una fecha ISO válida" }),
@@ -85,6 +86,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         },
       },
     })
+
+    await notificationService.sendAppointmentRescheduled(id, appointment.startsAt)
 
     return Response.json({
       success: true,

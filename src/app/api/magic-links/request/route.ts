@@ -3,6 +3,7 @@ import { z } from "zod"
 import { withErrorHandler } from "@/lib/api/middleware"
 import { createApiResponse } from "@/lib/api/response"
 import { magicLinkService } from "@/modules/booking/services/magic-link-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 import { clientRepository } from "@/modules/booking/repositories/client-repository"
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 
@@ -32,7 +33,9 @@ export const POST = withErrorHandler(async (req: NextRequest): Promise<NextRespo
     return createApiResponse({ requested: true })
   }
 
-  await magicLinkService.createMagicLink(appointment.id)
+  const { token } = await magicLinkService.createMagicLink(appointment.id)
+
+  await notificationService.sendMagicLink(appointment.id, token)
 
   return createApiResponse({ requested: true })
 })

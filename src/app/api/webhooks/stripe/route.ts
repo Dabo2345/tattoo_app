@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger"
 import { captureException } from "@/lib/sentry"
 import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
 import { auditService } from "@/modules/audit/services/audit-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 import type Stripe from "stripe"
 
 /**
@@ -88,6 +89,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
   })
 
   logger.info({ appointmentId, sessionId: session.id }, "Consulta confirmada tras pago exitoso")
+
+  await notificationService.sendConsultationConfirmed(appointmentId)
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {

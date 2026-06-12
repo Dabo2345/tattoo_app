@@ -3,6 +3,7 @@ import { z } from "zod"
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
 import { env } from "@/lib/env"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -144,6 +145,8 @@ export async function POST(request: Request) {
     })
 
     const linkUrl = `${env.NEXT_PUBLIC_APP_URL}/book/${token}`
+
+    await notificationService.sendSessionLink(consultationId, token)
 
     return Response.json({
       success: true,
