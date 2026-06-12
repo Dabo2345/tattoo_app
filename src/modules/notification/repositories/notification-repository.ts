@@ -37,4 +37,11 @@ export const notificationRepository = {
       where: { status: "FAILED", failedAt: { gte: since } },
     })
   },
+
+  async existsByAppointmentAndType(appointmentId: string, type: NotificationType) {
+    const count = await prisma.notification.count({
+      where: { appointmentId, type },
+    })
+    return count > 0
+  },
 }

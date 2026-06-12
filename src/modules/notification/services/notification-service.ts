@@ -11,6 +11,8 @@ import { AppointmentCancelledEmail } from "../templates/appointment-cancelled"
 import { AppointmentRescheduledEmail } from "../templates/appointment-rescheduled"
 import { MagicLinkEmail } from "../templates/magic-link"
 import { SessionLinkEmail } from "../templates/session-link"
+import { Reminder24hEmail } from "../templates/reminder-24h"
+import { Reminder2hEmail } from "../templates/reminder-2h"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -328,6 +330,88 @@ export const notificationService = {
       }
     } catch (err) {
       logger.error({ appointmentId, error: err }, "sendSessionLink: unexpected error")
+    }
+  },
+
+  /**
+   * Recordatorio 24h antes de la cita. Llamado por el cron job.
+   */
+  async sendReminder24h(appointmentId: string): Promise<void> {
+    try {
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { client: true },
+      })
+      if (!appointment) {
+        logger.error({ appointmentId }, "sendReminder24h: appointment not found")
+        return
+      }
+
+      const notification = await notificationRepository.create(appointmentId, "REMINDER_24H")
+
+      const payload = {
+        clientName: appointment.client.name,
+        clientEmail: appointment.client.email,
+        appointmentDate: formatDate(appointment.startsAt),
+        appointmentTime: formatTime(appointment.startsAt),
+        hoursUntil: 24 as const,
+      }
+
+      const result = await sendEmail({
+        to: appointment.client.email,
+        subject: `Recordatorio: tu cita es mañana — ${payload.appointmentTime}`,
+        react: createElement(Reminder24hEmail, payload),
+      })
+
+      if (result.success) {
+        await notificationRepository.markSent(notification.id)
+      } else {
+        await notificationRepository.markFailed(notification.id, result.error)
+        logger.error({ appointmentId, error: result.error }, "sendReminder24h: email failed")
+      }
+    } catch (err) {
+      logger.error({ appointmentId, error: err }, "sendReminder24h: unexpected error")
+    }
+  },
+
+  /**
+   * Recordatorio 2h antes de la cita. Llamado por el cron job.
+   */
+  async sendReminder2h(appointmentId: string): Promise<void> {
+    try {
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { client: true },
+      })
+      if (!appointment) {
+        logger.error({ appointmentId }, "sendReminder2h: appointment not found")
+        return
+      }
+
+      const notification = await notificationRepository.create(appointmentId, "REMINDER_2H")
+
+      const payload = {
+        clientName: appointment.client.name,
+        clientEmail: appointment.client.email,
+        appointmentDate: formatDate(appointment.startsAt),
+        appointmentTime: formatTime(appointment.startsAt),
+        hoursUntil: 2 as const,
+      }
+
+      const result = await sendEmail({
+        to: appointment.client.email,
+        subject: `Recordatorio: tu cita es hoy — ${payload.appointmentTime}`,
+        react: createElement(Reminder2hEmail, payload),
+      })
+
+      if (result.success) {
+        await notificationRepository.markSent(notification.id)
+      } else {
+        await notificationRepository.markFailed(notification.id, result.error)
+        logger.error({ appointmentId, error: result.error }, "sendReminder2h: email failed")
+      }
+    } catch (err) {
+      logger.error({ appointmentId, error: err }, "sendReminder2h: unexpected error")
     }
   },
 }
