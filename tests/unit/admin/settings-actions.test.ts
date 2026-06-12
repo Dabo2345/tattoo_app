@@ -31,8 +31,9 @@ import {
   updateWorkingHoursAction,
   updateBreakTimesAction,
   updateDepositAmountAction,
-  STUDIO_CONFIG_ID,
 } from "@/app/admin/settings/actions"
+
+const STUDIO_CONFIG_ID = "00000000-0000-0000-0000-000000000003"
 
 const mockGetSession = vi.mocked(auth.api.getSession)
 const mockUpsert = vi.mocked(prisma.studioConfig.upsert)

@@ -16,7 +16,8 @@ export const GET = withErrorHandler(
     _req: NextRequest,
     ctx: { params: Promise<Record<string, string>> }
   ): Promise<NextResponse> => {
-    const { token } = await ctx.params
+    const params = await ctx.params
+    const token = params.token!
 
     const result = await magicLinkService.validateMagicLink(token)
 

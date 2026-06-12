@@ -89,7 +89,7 @@ describe("magicLinkService.createMagicLink", () => {
     const result = await magicLinkService.createMagicLink("appt-001")
 
     expect(mockCreateMagicLink).toHaveBeenCalledOnce()
-    const call = mockCreateMagicLink.mock.calls[0][0]
+    const call = mockCreateMagicLink.mock.calls[0]![0]!
     expect(call.tokenHash).not.toBe(result.token)
     expect(call.tokenHash).toHaveLength(64)
     expect(call.tokenHash).toMatch(/^[0-9a-f]{64}$/)

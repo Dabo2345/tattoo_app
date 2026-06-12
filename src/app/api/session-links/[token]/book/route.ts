@@ -21,7 +21,8 @@ export const POST = withErrorHandler(
     req: NextRequest,
     ctx: { params: Promise<Record<string, string>> }
   ): Promise<NextResponse> => {
-    const { token } = await ctx.params
+    const params = await ctx.params
+    const token = params.token!
     const body = await req.json()
     const { startAt } = bodySchema.parse(body)
 

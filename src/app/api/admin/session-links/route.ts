@@ -14,7 +14,7 @@ const SESSION_LINK_EXPIRY_DAYS = 30
 const postBodySchema = z.object({
   consultationId: z.string().min(1, "'consultationId' es requerido"),
   durationMinutes: z
-    .number({ invalid_type_error: "'durationMinutes' debe ser un número" })
+    .number({ error: "'durationMinutes' debe ser un número" })
     .int("'durationMinutes' debe ser un entero")
     .min(30, "'durationMinutes' mínimo es 30")
     .max(480, "'durationMinutes' máximo es 480"),

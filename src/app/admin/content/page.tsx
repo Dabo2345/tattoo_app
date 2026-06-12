@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { prisma } from "@/lib/db/prisma"
-import { ARTIST_PROFILE_ID, STUDIO_INFO_ID } from "@/app/admin/content/actions"
 import { ArtistProfileForm } from "@/components/admin/artist-profile-form"
 import { StudioInfoForm } from "@/components/admin/studio-info-form"
 
@@ -34,8 +33,8 @@ const defaultStudioInfo = {
 
 export default async function AdminContentPage() {
   const [artistProfile, studioInfo] = await Promise.all([
-    prisma.artistProfile.findUnique({ where: { id: ARTIST_PROFILE_ID } }),
-    prisma.studioInfo.findUnique({ where: { id: STUDIO_INFO_ID } }),
+    prisma.artistProfile.findUnique({ where: { id: "00000000-0000-0000-0000-000000000001" } }),
+    prisma.studioInfo.findUnique({ where: { id: "00000000-0000-0000-0000-000000000002" } }),
   ])
 
   const artistInitial = artistProfile

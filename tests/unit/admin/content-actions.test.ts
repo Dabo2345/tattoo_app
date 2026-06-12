@@ -30,12 +30,10 @@ vi.mock("@/lib/db/prisma", () => ({
 
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
-import {
-  updateArtistProfileAction,
-  updateStudioInfoAction,
-  ARTIST_PROFILE_ID,
-  STUDIO_INFO_ID,
-} from "@/app/admin/content/actions"
+import { updateArtistProfileAction, updateStudioInfoAction } from "@/app/admin/content/actions"
+
+const ARTIST_PROFILE_ID = "00000000-0000-0000-0000-000000000001"
+const STUDIO_INFO_ID = "00000000-0000-0000-0000-000000000002"
 
 const mockGetSession = vi.mocked(auth.api.getSession)
 const mockArtistUpsert = vi.mocked(prisma.artistProfile.upsert)

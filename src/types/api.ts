@@ -30,6 +30,10 @@ export type ApiErrorCode =
   | "CONFLICT"
   | "RESCHEDULE_NOT_ALLOWED"
   | "INTERNAL_ERROR"
+  | "NOTIFICATION_SEND_ERROR"
+  | "INVALID_STATUS"
+  | "ALREADY_EXISTS"
+  | "ALREADY_CANCELLED"
 
 // Resultado de Server Actions (para componentes)
 export type ActionResult<T> =
