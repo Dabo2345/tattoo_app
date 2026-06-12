@@ -8,6 +8,10 @@
 #
 # Comportamiento:
 #   • Si el comando NO es 'gh pr create' → exit 0 (no hace nada)
+
+# Redirigir todo stdout a stderr — Claude Code muestra stderr
+# como mensaje de bloqueo cuando el hook sale con código 2.
+exec 1>&2
 #   • Si el comando ES 'gh pr create'    → muestra informe + exit 2 (bloquea)
 # ============================================================
 
