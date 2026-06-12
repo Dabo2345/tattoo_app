@@ -1,6 +1,6 @@
 export type TimeSlot = {
-  startAt: Date
-  endAt: Date
+  startsAt: Date
+  endsAt: Date
 }
 
 export type WorkingHours = {

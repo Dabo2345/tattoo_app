@@ -43,7 +43,7 @@ export function isOccupied(startAt: Date, endAt: Date, occupied: OccupiedPeriod[
  * Genera todos los posibles slots de 30 min para un día concreto
  * dentro del horario laboral (10:00–19:30 como inicio del último slot de 60min).
  */
-export function generateDaySlots(date: Date): Array<{ startAt: Date; endAt: Date }> {
+export function generateDaySlots(date: Date): Array<{ startsAt: Date; endsAt: Date }> {
   const slots = []
   const lastStart = WORKING_END_HOUR * 60 - CONSULTATION_DURATION_MINUTES
 
@@ -52,13 +52,13 @@ export function generateDaySlots(date: Date): Array<{ startAt: Date; endAt: Date
     minutes <= lastStart;
     minutes += SLOT_DURATION_MINUTES
   ) {
-    const startAt = new Date(date)
-    startAt.setUTCHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
+    const startsAt = new Date(date)
+    startsAt.setUTCHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
 
-    const endAt = new Date(startAt)
-    endAt.setUTCMinutes(endAt.getUTCMinutes() + CONSULTATION_DURATION_MINUTES)
+    const endsAt = new Date(startsAt)
+    endsAt.setUTCMinutes(endsAt.getUTCMinutes() + CONSULTATION_DURATION_MINUTES)
 
-    slots.push({ startAt, endAt })
+    slots.push({ startsAt, endsAt })
   }
 
   return slots
@@ -101,13 +101,13 @@ export const calendarService = {
 
       for (const slot of daySlots) {
         // Descartar slots ya pasados
-        if (slot.startAt <= now) continue
+        if (slot.startsAt <= now) continue
         // Descartar slots fuera del rango solicitado
-        if (slot.startAt < rangeStart || slot.endAt > rangeEnd) continue
+        if (slot.startsAt < rangeStart || slot.endsAt > rangeEnd) continue
         // Descartar slots ocupados
-        if (isOccupied(slot.startAt, slot.endAt, occupied)) continue
+        if (isOccupied(slot.startsAt, slot.endsAt, occupied)) continue
 
-        available.push({ startAt: slot.startAt, endAt: slot.endAt })
+        available.push({ startsAt: slot.startsAt, endsAt: slot.endsAt })
       }
 
       cursor.setUTCDate(cursor.getUTCDate() + 1)
