@@ -61,7 +61,8 @@
       "Bash(mkdir -p C:/Users/dlope/github/tattoo_app/src/app/api/admin/appointments/\\\\[id\\\\]/cancel)",
       "Bash(mkdir -p C:/Users/dlope/github/tattoo_app/src/app/api/admin/appointments/\\\\[id\\\\]/reschedule)",
       "Bash(cat /c/Users/dlope/github/tattoo_app/src/lib/supabase/*.ts)",
-      "Bash(npm --version)"
+      "Bash(npm --version)",
+      "Bash(pnpm test:*)"
     ]
   }
 }

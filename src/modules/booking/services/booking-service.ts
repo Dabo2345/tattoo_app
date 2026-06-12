@@ -2,6 +2,7 @@ import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { clientRepository } from "../repositories/client-repository"
 import { bookingRepository } from "../repositories/booking-repository"
 import { auditService } from "@/modules/audit/services/audit-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 import { hashToken } from "@/lib/utils/tokens"
 import { LinkAlreadyUsedError, LinkExpiredError, LinkNotFoundError } from "@/lib/api/errors"
 import type { BookSessionResult, CreateConsultationInput, CreateConsultationResult } from "../types"
@@ -98,6 +99,8 @@ export const bookingService = {
         sessionLinkId: sessionLink.id,
       },
     })
+
+    await notificationService.sendSessionConfirmed(appointment.id)
 
     return { appointmentId: appointment.id }
   },
