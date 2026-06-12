@@ -26,15 +26,23 @@ vi.mock("@/modules/audit/services/audit-service", () => ({
   },
 }))
 
+vi.mock("@/modules/notification/services/notification-service", () => ({
+  notificationService: {
+    sendAppointmentRescheduled: vi.fn(),
+  },
+}))
+
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { auditService } from "@/modules/audit/services/audit-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 const mockFindMagicLink = vi.mocked(bookingRepository.findMagicLinkByHash)
 const mockFindAppointment = vi.mocked(bookingRepository.findAppointmentById)
 const mockRescheduleAppointment = vi.mocked(bookingRepository.rescheduleAppointment)
 const mockAuditLog = vi.mocked(auditService.log)
 const mockAssertSlotAvailable = vi.mocked(calendarService.assertSlotAvailable)
+const mockSendAppointmentRescheduled = vi.mocked(notificationService.sendAppointmentRescheduled)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -92,6 +100,7 @@ describe("POST /api/appointments/:id/reschedule", () => {
     mockRescheduleAppointment.mockResolvedValue(mockAppointment as never)
     mockAuditLog.mockResolvedValue(undefined)
     mockAssertSlotAvailable.mockResolvedValue(undefined)
+    mockSendAppointmentRescheduled.mockResolvedValue(undefined)
   })
 
   it("reprograma la cita y devuelve rescheduled: true", async () => {
