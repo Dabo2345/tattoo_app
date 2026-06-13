@@ -437,6 +437,27 @@ POST
 
 /api/admin/appointments/:id/cancel
 
+Cancela una cita y ejecuta la política de depósito (RB-013/014).
+
+**Comportamiento:**
+- Si `startsAt` es ≥4 días desde ahora → reembolso automático vía Stripe (`refunded: true`, incluye `stripeRefundId`)
+- Si `startsAt` es <4 días desde ahora → depósito retenido (`refunded: false`)
+- Si el appointment ya está CANCELLED/COMPLETED/NO_SHOW → 409
+
+**Respuesta 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "appointment": { "id": "string", "status": "CANCELLED" },
+    "refunded": true,
+    "stripeRefundId": "re_xxx"
+  }
+}
+```
+
+**Nota:** `stripeRefundId` solo aparece cuando `refunded: true`.
+
 ---
 
 ## Reprogramar cita

@@ -1,13 +1,11 @@
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
+import { createApiResponse } from "@/lib/api/response"
 import { notificationService } from "@/modules/notification/services/notification-service"
+import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
+import { auditService } from "@/modules/audit/services/audit-service"
 
 const NON_CANCELLABLE = ["CANCELLED", "COMPLETED", "NO_SHOW"] as const
-
-function daysUntil(date: Date): number {
-  const now = new Date()
-  return (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-}
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   return withAdminAuth(request, async (session) => {
@@ -37,28 +35,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       )
     }
 
-    const refundEligible = daysUntil(appointment.startsAt) >= 4
+    // Aplicar política de depósito (RB-013/014): ejecuta reembolso Stripe si ≥4 días
+    const policyResult = await depositPolicyService.handleCancellation(id, appointment.startsAt)
 
     await prisma.appointment.update({
       where: { id },
       data: { status: "CANCELLED" },
     })
 
-    await prisma.auditLog.create({
-      data: {
-        action: "APPOINTMENT_CANCELLED",
-        entityId: id,
-        entityType: "Appointment",
-        adminUserId: session.user.id,
-        metadata: { refundEligible },
+    await auditService.log("APPOINTMENT_CANCELLED", id, {
+      entityType: "Appointment",
+      adminUserId: session.user.id,
+      metadata: {
+        refunded: policyResult.refunded,
+        ...(policyResult.refunded
+          ? { stripeRefundId: policyResult.stripeRefundId }
+          : { reason: policyResult.reason }),
       },
     })
 
     await notificationService.sendAppointmentCancelled(id)
 
-    return Response.json({
-      success: true,
-      data: { appointment: { id, status: "CANCELLED" }, refundEligible },
+    return createApiResponse({
+      appointment: { id, status: "CANCELLED" },
+      refunded: policyResult.refunded,
+      ...(policyResult.refunded ? { stripeRefundId: policyResult.stripeRefundId } : {}),
     })
   })
 }

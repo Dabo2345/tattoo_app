@@ -15,19 +15,39 @@ vi.mock("@/lib/db/prisma", () => ({
       findFirst: vi.fn(),
       update: vi.fn(),
     },
-    auditLog: {
-      create: vi.fn(),
-    },
+  },
+}))
+
+vi.mock("@/modules/payment/services/deposit-policy", () => ({
+  depositPolicyService: {
+    handleCancellation: vi.fn(),
+  },
+}))
+
+vi.mock("@/modules/audit/services/audit-service", () => ({
+  auditService: {
+    log: vi.fn(),
+  },
+}))
+
+vi.mock("@/modules/notification/services/notification-service", () => ({
+  notificationService: {
+    sendAppointmentCancelled: vi.fn(),
   },
 }))
 
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
+import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
+import { auditService } from "@/modules/audit/services/audit-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
+const mockWithAdminAuth = vi.mocked(withAdminAuth)
 const mockFindFirst = vi.mocked(prisma.appointment.findFirst)
 const mockUpdate = vi.mocked(prisma.appointment.update)
-const mockAuditCreate = vi.mocked(prisma.auditLog.create)
-const mockWithAdminAuth = vi.mocked(withAdminAuth)
+const mockHandleCancellation = vi.mocked(depositPolicyService.handleCancellation)
+const mockAuditLog = vi.mocked(auditService.log)
+const mockSendCancelled = vi.mocked(notificationService.sendAppointmentCancelled)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -56,7 +76,9 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
   beforeEach(() => {
     vi.resetAllMocks()
     mockUpdate.mockResolvedValue({} as never)
-    mockAuditCreate.mockResolvedValue({} as never)
+    mockAuditLog.mockResolvedValue(undefined)
+    mockSendCancelled.mockResolvedValue(undefined)
+    mockHandleCancellation.mockResolvedValue({ refunded: true, stripeRefundId: "re_test_123" })
   })
 
   it("retorna 401 si no hay sesión admin", async () => {
@@ -91,45 +113,107 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
     expect(body.error.code).toBe("ALREADY_CANCELLED")
   })
 
-  it("retorna 200 con refundEligible=true cuando la cita es en 7 días", async () => {
+  it("llama a depositPolicyService.handleCancellation con el id y startsAt", async () => {
+    const appointment = makeAppointment()
+    mockFindFirst.mockResolvedValueOnce(appointment as never)
+
+    await POST(makeRequest(), { params })
+
+    expect(mockHandleCancellation).toHaveBeenCalledWith("apt-1", appointment.startsAt)
+  })
+
+  it("retorna 200 con refunded:true y stripeRefundId cuando hay reembolso (≥4 días)", async () => {
     mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+
     const res = await POST(makeRequest(), { params })
+
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.success).toBe(true)
-    expect(body.data.refundEligible).toBe(true)
-    expect(body.data.appointment.status).toBe("CANCELLED")
+    expect(body.data).toMatchObject({
+      appointment: { id: "apt-1", status: "CANCELLED" },
+      refunded: true,
+      stripeRefundId: "re_test_123",
+    })
   })
 
-  it("retorna 200 con refundEligible=false cuando la cita es en menos de 4 días", async () => {
-    const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 days from now
+  it("retorna 200 con refunded:false cuando se retiene el depósito (<4 días)", async () => {
+    mockHandleCancellation.mockResolvedValueOnce({ refunded: false, reason: "too_late" })
+    const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     mockFindFirst.mockResolvedValueOnce(makeAppointment({ startsAt: soon }) as never)
+
     const res = await POST(makeRequest(), { params })
+
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data.refundEligible).toBe(false)
+    expect(body.data).toMatchObject({
+      appointment: { id: "apt-1", status: "CANCELLED" },
+      refunded: false,
+    })
+    expect(body.data.stripeRefundId).toBeUndefined()
   })
 
   it("actualiza el status a CANCELLED en la base de datos", async () => {
     mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+
     await POST(makeRequest(), { params })
+
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: "apt-1" },
       data: { status: "CANCELLED" },
     })
   })
 
-  it("crea un AuditLog con la acción APPOINTMENT_CANCELLED", async () => {
+  it("llama a auditService.log con APPOINTMENT_CANCELLED y stripeRefundId cuando hay reembolso", async () => {
     mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+
     await POST(makeRequest(), { params })
-    expect(mockAuditCreate).toHaveBeenCalledWith(
+
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "APPOINTMENT_CANCELLED",
+      "apt-1",
       expect.objectContaining({
-        data: expect.objectContaining({
-          action: "APPOINTMENT_CANCELLED",
-          entityId: "apt-1",
-          adminUserId: "admin-1",
+        entityType: "Appointment",
+        adminUserId: "admin-1",
+        metadata: expect.objectContaining({
+          refunded: true,
+          stripeRefundId: "re_test_123",
         }),
       })
     )
+  })
+
+  it("llama a auditService.log con reason:too_late cuando se retiene el depósito", async () => {
+    mockHandleCancellation.mockResolvedValueOnce({ refunded: false, reason: "too_late" })
+    mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+
+    await POST(makeRequest(), { params })
+
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "APPOINTMENT_CANCELLED",
+      "apt-1",
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          refunded: false,
+          reason: "too_late",
+        }),
+      })
+    )
+  })
+
+  it("envía notificación de cancelación al cliente", async () => {
+    mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+
+    await POST(makeRequest(), { params })
+
+    expect(mockSendCancelled).toHaveBeenCalledWith("apt-1")
+  })
+
+  it("no ejecuta el reembolso si la cita no existe (no llama a depositPolicyService)", async () => {
+    mockFindFirst.mockResolvedValueOnce(null)
+
+    await POST(makeRequest(), { params })
+
+    expect(mockHandleCancellation).not.toHaveBeenCalled()
   })
 })
