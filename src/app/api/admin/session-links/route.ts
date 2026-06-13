@@ -1,8 +1,9 @@
-import { createHash, randomBytes } from "crypto"
+import { randomBytes } from "crypto"
 import { z } from "zod"
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
 import { env } from "@/lib/env"
+import { hashToken } from "@/lib/utils/tokens"
 import { notificationService } from "@/modules/notification/services/notification-service"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
 
     // ── Generate token ────────────────────────────────────────────────────────
     const token = randomBytes(32).toString("hex")
-    const tokenHash = createHash("sha256").update(token).digest("hex")
+    const tokenHash = hashToken(token)
 
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + SESSION_LINK_EXPIRY_DAYS)
