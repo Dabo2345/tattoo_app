@@ -2,6 +2,7 @@
 
 import { randomUUID } from "crypto"
 import { headers } from "next/headers"
+import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
 import { validateImageFile, uploadImage, getPublicUrl } from "@/lib/supabase/storage"
@@ -77,6 +78,9 @@ export async function uploadGalleryImageAction(
     },
   })
 
+  revalidatePath("/")
+  revalidatePath("/galeria")
+
   return { success: true, data: { id: image.id, url } }
 }
 
@@ -111,6 +115,9 @@ export async function deleteGalleryImageAction(id: string): Promise<ActionResult
     },
   })
 
+  revalidatePath("/")
+  revalidatePath("/galeria")
+
   return { success: true }
 }
 
@@ -134,6 +141,9 @@ export async function reorderGalleryAction(orderedIds: string[]): Promise<Action
       })
     )
   )
+
+  revalidatePath("/")
+  revalidatePath("/galeria")
 
   return { success: true }
 }
