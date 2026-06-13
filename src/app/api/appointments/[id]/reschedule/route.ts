@@ -12,6 +12,7 @@ import { bookingRepository } from "@/modules/booking/repositories/booking-reposi
 import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { daysUntilAppointment } from "@/modules/payment/services/deposit-policy"
 import { auditService } from "@/modules/audit/services/audit-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 const CONSULTATION_DURATION_MINUTES = 60
 
@@ -87,6 +88,8 @@ export const POST = withErrorHandler(
         newStartsAt: newStartAt.toISOString(),
       },
     })
+
+    await notificationService.sendAppointmentRescheduled(appointmentId, appointment.startsAt)
 
     return createApiResponse({
       rescheduled: true,

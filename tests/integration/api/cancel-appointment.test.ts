@@ -26,15 +26,23 @@ vi.mock("@/modules/audit/services/audit-service", () => ({
   },
 }))
 
+vi.mock("@/modules/notification/services/notification-service", () => ({
+  notificationService: {
+    sendAppointmentCancelled: vi.fn(),
+  },
+}))
+
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
 import { auditService } from "@/modules/audit/services/audit-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 const mockFindMagicLink = vi.mocked(bookingRepository.findMagicLinkByHash)
 const mockFindAppointment = vi.mocked(bookingRepository.findAppointmentById)
 const mockCancelAppointment = vi.mocked(bookingRepository.cancelAppointment)
 const mockAuditLog = vi.mocked(auditService.log)
 const mockHandleCancellation = vi.mocked(depositPolicyService.handleCancellation)
+const mockSendAppointmentCancelled = vi.mocked(notificationService.sendAppointmentCancelled)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -84,6 +92,7 @@ describe("POST /api/appointments/:id/cancel", () => {
     mockCancelAppointment.mockResolvedValue(mockAppointment as never)
     mockAuditLog.mockResolvedValue(undefined)
     mockHandleCancellation.mockResolvedValue({ refunded: true, stripeRefundId: "re_test_123" })
+    mockSendAppointmentCancelled.mockResolvedValue(undefined)
   })
 
   it("cancela la cita y devuelve refunded: true cuando procede reembolso", async () => {
@@ -175,5 +184,22 @@ describe("POST /api/appointments/:id/cancel", () => {
       appointmentId,
       expect.objectContaining({ entityType: "Appointment" })
     )
+  })
+
+  it("envía notificación de cancelación al cliente tras cancelar", async () => {
+    await POST(makeRequest({ magicLinkToken: rawToken }), ctx)
+
+    expect(mockSendAppointmentCancelled).toHaveBeenCalledWith(appointmentId)
+  })
+
+  it("no envía notificación si la cita ya estaba cancelada (idempotente)", async () => {
+    mockFindAppointment.mockResolvedValue({
+      ...mockAppointment,
+      status: "CANCELLED",
+    } as never)
+
+    await POST(makeRequest({ magicLinkToken: rawToken }), ctx)
+
+    expect(mockSendAppointmentCancelled).not.toHaveBeenCalled()
   })
 })
