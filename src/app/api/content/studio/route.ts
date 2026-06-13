@@ -1,6 +1,19 @@
 import { NextResponse } from "next/server"
-import { studioInfo } from "@/modules/content/data/studio-info"
+import { prisma } from "@/lib/db/prisma"
+
+const STUDIO_INFO_ID = "00000000-0000-0000-0000-000000000002"
 
 export async function GET() {
-  return NextResponse.json({ success: true, data: studioInfo })
+  const studio = await prisma.studioInfo.findUnique({
+    where: { id: STUDIO_INFO_ID },
+  })
+
+  if (!studio) {
+    return NextResponse.json(
+      { success: false, error: "Información del estudio no encontrada" },
+      { status: 404 }
+    )
+  }
+
+  return NextResponse.json({ success: true, data: studio })
 }
