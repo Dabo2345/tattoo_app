@@ -14,3 +14,22 @@ export type OccupiedPeriod = {
   startsAt: Date
   endsAt: Date
 }
+
+export type BreakTime = {
+  id: string
+  label: string
+  startHour: number
+  startMinute: number
+  endHour: number
+  endMinute: number
+}
+
+export type CalendarConfig = {
+  workingStartHour: number
+  workingStartMinute: number
+  workingEndHour: number
+  workingEndMinute: number
+  slotDurationMinutes: number
+  consultationDurationMinutes: number
+  breaks: BreakTime[]
+}
