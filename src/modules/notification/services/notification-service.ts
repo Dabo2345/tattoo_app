@@ -4,6 +4,7 @@ import { env } from "@/lib/env"
 import { logger } from "@/lib/logger"
 import { sendEmail } from "@/lib/resend/send-email"
 import { magicLinkService } from "@/modules/booking/services/magic-link-service"
+import { daysUntilAppointment } from "@/modules/payment/services/deposit-policy"
 import { notificationRepository } from "../repositories/notification-repository"
 import { ConsultationConfirmedEmail } from "../templates/consultation-confirmed"
 import { SessionConfirmedEmail } from "../templates/session-confirmed"
@@ -155,9 +156,8 @@ export const notificationService = {
         return
       }
 
-      const now = new Date()
-      const daysUntil = (appointment.startsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      const refundEligible = daysUntil >= 4 && appointment.payment !== null
+      const refundEligible =
+        daysUntilAppointment(appointment.startsAt) >= 4 && appointment.payment !== null
 
       const notification = await notificationRepository.create(
         appointmentId,

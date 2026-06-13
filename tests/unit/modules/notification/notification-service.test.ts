@@ -41,6 +41,12 @@ vi.mock("@/lib/logger", () => ({
   },
 }))
 
+vi.mock("@/modules/payment/services/deposit-policy", () => ({
+  daysUntilAppointment: vi.fn((date: Date) =>
+    Math.floor((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  ),
+}))
+
 import { prisma } from "@/lib/db/prisma"
 import { sendEmail } from "@/lib/resend/send-email"
 import { notificationRepository } from "@/modules/notification/repositories/notification-repository"
