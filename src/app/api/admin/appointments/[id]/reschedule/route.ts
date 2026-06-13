@@ -1,6 +1,8 @@
 import { z } from "zod"
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
+import { SlotNotAvailableError } from "@/lib/api/errors"
+import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
 
 const rescheduleBodySchema = z.object({
@@ -47,26 +49,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const newStartDate = new Date(newStartAt)
     const newEndsAt = new Date(newStartDate.getTime() + durationMs)
 
-    const conflict = await prisma.appointment.findFirst({
-      where: {
-        id: { not: id },
-        deletedAt: null,
-        status: { notIn: ["CANCELLED"] },
-        AND: [{ startsAt: { lt: newEndsAt } }, { endsAt: { gt: newStartDate } }],
-      },
-    })
-
-    if (conflict) {
-      return Response.json(
-        {
-          success: false,
-          error: {
-            code: "SLOT_NOT_AVAILABLE",
-            message: "El nuevo horario está ocupado por otra cita",
+    // Verifica disponibilidad: citas existentes Y BlockedPeriods (RB-015)
+    try {
+      await calendarService.assertSlotAvailable(newStartDate, newEndsAt)
+    } catch (err) {
+      if (err instanceof SlotNotAvailableError) {
+        return Response.json(
+          {
+            success: false,
+            error: { code: "SLOT_NOT_AVAILABLE", message: "El nuevo horario no está disponible" },
           },
-        },
-        { status: 409 }
-      )
+          { status: 409 }
+        )
+      }
+      throw err
     }
 
     await prisma.appointment.update({
