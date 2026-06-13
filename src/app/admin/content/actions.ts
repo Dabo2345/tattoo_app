@@ -1,6 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
+import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
@@ -90,6 +91,9 @@ export async function updateArtistProfileAction(input: ArtistProfileInput): Prom
     },
   })
 
+  revalidatePath("/perfil")
+  revalidatePath("/")
+
   return { success: true }
 }
 
@@ -127,6 +131,8 @@ export async function updateStudioInfoAction(input: StudioInfoInput): Promise<Ac
       metadata: { name: data.name },
     },
   })
+
+  revalidatePath("/estudio")
 
   return { success: true }
 }
