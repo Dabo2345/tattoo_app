@@ -6,6 +6,7 @@ import { createApiResponse } from "@/lib/api/response"
 import { AppointmentNotFoundError, LinkExpiredError } from "@/lib/api/errors"
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
+import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
 import { auditService } from "@/modules/audit/services/audit-service"
 
 const bodySchema = z.object({
@@ -73,11 +74,17 @@ export const POST = withErrorHandler(
       },
     })
 
+    let refundAmount = 0
+    if (policyResult.refunded) {
+      const payment = await paymentRepository.findByAppointmentId(appointmentId)
+      refundAmount = Number(payment?.amount ?? 0)
+    }
+
     return createApiResponse(
       {
         cancelled: true,
         refunded: policyResult.refunded,
-        refundAmount: policyResult.refunded ? Number(appointment.depositAmount ?? 50) : 0,
+        refundAmount,
       },
       200
     )

@@ -20,6 +20,12 @@ vi.mock("@/modules/payment/services/deposit-policy", () => ({
   },
 }))
 
+vi.mock("@/modules/payment/repositories/payment-repository", () => ({
+  paymentRepository: {
+    findByAppointmentId: vi.fn(),
+  },
+}))
+
 vi.mock("@/modules/audit/services/audit-service", () => ({
   auditService: {
     log: vi.fn(),
@@ -28,6 +34,7 @@ vi.mock("@/modules/audit/services/audit-service", () => ({
 
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
+import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
 import { auditService } from "@/modules/audit/services/audit-service"
 
 const mockFindMagicLink = vi.mocked(bookingRepository.findMagicLinkByHash)
@@ -35,6 +42,7 @@ const mockFindAppointment = vi.mocked(bookingRepository.findAppointmentById)
 const mockCancelAppointment = vi.mocked(bookingRepository.cancelAppointment)
 const mockAuditLog = vi.mocked(auditService.log)
 const mockHandleCancellation = vi.mocked(depositPolicyService.handleCancellation)
+const mockFindPayment = vi.mocked(paymentRepository.findByAppointmentId)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -84,6 +92,11 @@ describe("POST /api/appointments/:id/cancel", () => {
     mockCancelAppointment.mockResolvedValue(mockAppointment as never)
     mockAuditLog.mockResolvedValue(undefined)
     mockHandleCancellation.mockResolvedValue({ refunded: true, stripeRefundId: "re_test_123" })
+    mockFindPayment.mockResolvedValue({
+      id: "pay-1",
+      amount: 75,
+      stripePaymentIntentId: "pi_xxx",
+    } as never)
   })
 
   it("cancela la cita y devuelve refunded: true cuando procede reembolso", async () => {
@@ -92,7 +105,7 @@ describe("POST /api/appointments/:id/cancel", () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.success).toBe(true)
-    expect(body.data).toEqual({ cancelled: true, refunded: true, refundAmount: 50 })
+    expect(body.data).toEqual({ cancelled: true, refunded: true, refundAmount: 75 })
     expect(mockCancelAppointment).toHaveBeenCalledWith(appointmentId)
   })
 
@@ -165,6 +178,32 @@ describe("POST /api/appointments/:id/cancel", () => {
     expect(res.status).toBe(200)
     expect(mockHandleCancellation).not.toHaveBeenCalled()
     expect(mockCancelAppointment).not.toHaveBeenCalled()
+  })
+
+  it("refundAmount refleja el importe real del Payment record", async () => {
+    mockFindPayment.mockResolvedValueOnce({ id: "pay-1", amount: 35 } as never)
+
+    const res = await POST(makeRequest({ magicLinkToken: rawToken }), ctx)
+
+    const body = await res.json()
+    expect(body.data.refundAmount).toBe(35)
+  })
+
+  it("refundAmount es 0 si no hay Payment en DB (no fallback hardcodeado)", async () => {
+    mockFindPayment.mockResolvedValueOnce(null)
+
+    const res = await POST(makeRequest({ magicLinkToken: rawToken }), ctx)
+
+    const body = await res.json()
+    expect(body.data.refundAmount).toBe(0)
+  })
+
+  it("no consulta paymentRepository si no hay reembolso", async () => {
+    mockHandleCancellation.mockResolvedValueOnce({ refunded: false, reason: "too_late" })
+
+    await POST(makeRequest({ magicLinkToken: rawToken }), ctx)
+
+    expect(mockFindPayment).not.toHaveBeenCalled()
   })
 
   it("crea AuditLog APPOINTMENT_CANCELLED con el resultado del reembolso", async () => {
