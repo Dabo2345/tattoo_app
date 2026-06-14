@@ -1,64 +1,41 @@
-import { withAdminAuth } from "@/lib/auth"
-import { prisma } from "@/lib/db/prisma"
+import { NextRequest, NextResponse } from "next/server"
+import { withAdminAuth } from "@/lib/api/middleware"
+import { createApiResponse } from "@/lib/api/response"
+import { AppointmentNotFoundError, DomainError } from "@/lib/api/errors"
+import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
+import { daysUntilAppointment } from "@/modules/payment/services/deposit-policy"
 
 const NON_CANCELLABLE = ["CANCELLED", "COMPLETED", "NO_SHOW"] as const
 
-function daysUntil(date: Date): number {
-  const now = new Date()
-  return (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-}
+export const POST = withAdminAuth(
+  async (_request: NextRequest, ctx, session): Promise<NextResponse> => {
+    const id = (await ctx.params).id!
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  return withAdminAuth(request, async (session) => {
-    const { id } = await params
-
-    const appointment = await prisma.appointment.findFirst({
-      where: { id, deletedAt: null },
-    })
-
-    if (!appointment) {
-      return Response.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Cita no encontrada" } },
-        { status: 404 }
-      )
-    }
+    const appointment = await bookingRepository.findAppointmentById(id)
+    if (!appointment) throw new AppointmentNotFoundError()
 
     if (NON_CANCELLABLE.includes(appointment.status as (typeof NON_CANCELLABLE)[number])) {
-      return Response.json(
-        {
-          success: false,
-          error: {
-            code: "ALREADY_CANCELLED",
-            message: "La cita no puede cancelarse en su estado actual",
-          },
-        },
-        { status: 409 }
+      throw new DomainError(
+        "ALREADY_CANCELLED",
+        "La cita no puede cancelarse en su estado actual",
+        409
       )
     }
 
-    const refundEligible = daysUntil(appointment.startsAt) >= 4
+    const refundEligible = daysUntilAppointment(appointment.startsAt) >= 4
 
-    await prisma.appointment.update({
-      where: { id },
-      data: { status: "CANCELLED" },
-    })
+    await bookingRepository.cancelAppointment(id)
 
-    await prisma.auditLog.create({
-      data: {
-        action: "APPOINTMENT_CANCELLED",
-        entityId: id,
-        entityType: "Appointment",
-        adminUserId: session.user.id,
-        metadata: { refundEligible },
-      },
+    await auditService.log("APPOINTMENT_CANCELLED", id, {
+      entityType: "Appointment",
+      adminUserId: session.user.id,
+      metadata: { refundEligible },
     })
 
     await notificationService.sendAppointmentCancelled(id)
 
-    return Response.json({
-      success: true,
-      data: { appointment: { id, status: "CANCELLED" }, refundEligible },
-    })
-  })
-}
+    return createApiResponse({ appointment: { id, status: "CANCELLED" }, refundEligible })
+  }
+)
