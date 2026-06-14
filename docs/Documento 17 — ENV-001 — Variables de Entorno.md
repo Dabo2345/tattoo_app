@@ -145,6 +145,17 @@ El `.gitignore` debe contener:
 
 ---
 
+## 3.8 Cron Jobs
+
+| Variable | Descripción | Ejemplo | Privada |
+|----------|-------------|---------|---------|
+| `CRON_SECRET` | Token Bearer para autenticar el endpoint `/api/cron/send-reminders` | `openssl rand -hex 32` | **Sí — solo backend** |
+
+> Si `CRON_SECRET` no está definido, el endpoint `/api/cron/send-reminders` responde 503 y queda desactivado.
+> Generar con: `openssl rand -hex 32`
+
+---
+
 # 4. Archivo .env.example
 
 Este es el archivo exacto que debe existir en la raíz del repositorio:
@@ -206,6 +217,13 @@ SENTRY_AUTH_TOKEN="sntrys_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 # APLICACIÓN
 # ------------------------------------------------------------
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# ------------------------------------------------------------
+# CRON JOBS
+# ------------------------------------------------------------
+# Token Bearer para autenticar /api/cron/send-reminders
+# Generar con: openssl rand -hex 32
+CRON_SECRET="your-cron-secret-here"
 ```
 
 ---
@@ -275,6 +293,7 @@ Crear los siguientes secrets:
 | `SENTRY_DSN` | DSN Sentry |
 | `SENTRY_AUTH_TOKEN` | Token Sentry para source maps |
 | `NEXT_PUBLIC_APP_URL` | URL de staging |
+| `CRON_SECRET` | Token para autenticar endpoint de recordatorios |
 
 ---
 

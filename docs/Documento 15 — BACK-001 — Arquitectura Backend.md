@@ -105,20 +105,25 @@ Localización: `/src/app/api/`
 │   └── [id]/
 │       └── route.ts      ← GET /api/gallery/:id
 ├── content/
-│   ├── home/route.ts
-│   ├── profile/route.ts
-│   └── studio/route.ts
+│   ├── profile/route.ts  ← GET /api/content/profile
+│   └── studio/route.ts   ← GET /api/content/studio
 ├── webhooks/
 │   └── stripe/
 │       └── route.ts      ← POST /api/webhooks/stripe
+├── cron/
+│   └── send-reminders/
+│       └── route.ts      ← POST /api/cron/send-reminders (Bearer CRON_SECRET)
 └── admin/
-    ├── calendar/route.ts
+    ├── calendar/route.ts                         ← GET /api/admin/calendar
     ├── appointments/
+    │   ├── route.ts                              ← GET /api/admin/appointments
     │   └── [id]/
-    │       ├── cancel/route.ts
-    │       └── reschedule/route.ts
-    ├── blocked-periods/route.ts
-    └── session-links/route.ts
+    │       ├── cancel/route.ts                   ← POST /api/admin/appointments/:id/cancel
+    │       └── reschedule/route.ts               ← POST /api/admin/appointments/:id/reschedule
+    ├── blocked-periods/
+    │   ├── route.ts                              ← GET/POST /api/admin/blocked-periods
+    │   └── [id]/route.ts                         ← DELETE /api/admin/blocked-periods/:id
+    └── session-links/route.ts                    ← POST /api/admin/session-links
 ```
 
 ## 3.2 Server Actions

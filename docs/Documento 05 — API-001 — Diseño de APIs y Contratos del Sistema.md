@@ -377,19 +377,13 @@ GET
 
 # 8. Content APIs
 
-## Página Home
-
-GET
-
-/api/content/home
-
----
-
 ## Perfil artista
 
 GET
 
 /api/content/profile
+
+Respuesta: `{ success: true, data: { artistProfile } }`
 
 ---
 
@@ -399,27 +393,28 @@ GET
 
 /api/content/studio
 
+Respuesta: `{ success: true, data: { studioInfo } }`
+
+> Nota: No existe `/api/content/home`. La página Home carga datos directamente desde
+> la base de datos en el Server Component, sin pasar por una API Route.
+
 ---
 
 # 9. Admin APIs
 
-Protegidas por Better Auth.
+Protegidas por Better Auth (`withAdminAuth`).
 
 ---
 
-## Obtener agenda
+## Obtener agenda semanal
 
 GET
 
-/ api/admin/calendar
+/api/admin/calendar
 
----
+Query: `week` (ISO date de inicio de semana)
 
-## Bloquear periodo
-
-POST
-
-/api/admin/blocked-periods
+Respuesta: `{ success: true, data: { appointments[] } }`
 
 ---
 
@@ -429,25 +424,75 @@ GET
 
 /api/admin/appointments
 
+Query: `status`, `from`, `to` (opcionales)
+
+Respuesta: `{ success: true, data: { appointments[] } }`
+
 ---
 
-## Cancelar cita
+## Cancelar cita (admin)
 
 POST
 
 /api/admin/appointments/:id/cancel
 
+Respuesta: `{ success: true, data: { appointment } }`
+
 ---
 
-## Reprogramar cita
+## Reprogramar cita (admin)
 
 POST
 
 /api/admin/appointments/:id/reschedule
 
+Body: `{ newStartAt }`
+
+Respuesta: `{ success: true, data: { appointment } }`
+
 ---
 
-# 10. Uploads
+## Bloquear periodo
+
+POST
+
+/api/admin/blocked-periods
+
+Body: `{ startsAt, endsAt, reason? }`
+
+Respuesta: `{ success: true, data: { blockedPeriod } }`
+
+---
+
+## Eliminar periodo bloqueado
+
+DELETE
+
+/api/admin/blocked-periods/:id
+
+Respuesta: `{ success: true }`
+
+---
+
+# 10. Cron APIs
+
+## Enviar recordatorios automáticos
+
+POST
+
+/api/cron/send-reminders
+
+Auth: `Authorization: Bearer CRON_SECRET`
+
+Sin body. Busca appointments CONFIRMED en ventanas de 24h y 2h y envía recordatorios.
+
+Respuesta: `{ success: true, data: { sent24h, sent2h } }`
+
+Configurado en `vercel.json` para ejecutarse cada 30 minutos.
+
+---
+
+# 11. Uploads
 
 Server Action
 
@@ -467,7 +512,7 @@ reorderGalleryAction()
 
 ---
 
-# 11. Perfil
+# 12. Perfil
 
 Server Action
 
@@ -481,7 +526,7 @@ updateStudioInfoAction()
 
 ---
 
-# 12. Configuración
+# 13. Configuración
 
 Server Action
 
@@ -501,7 +546,7 @@ updateDepositAmountAction()
 
 ---
 
-# 13. Seguridad
+# 14. Seguridad
 
 Todas las APIs admin:
 
@@ -513,7 +558,7 @@ Audit Logged
 
 ---
 
-# 14. Rate Limiting
+# 15. Rate Limiting
 
 Magic Links
 
@@ -535,7 +580,7 @@ Login
 
 ---
 
-# 15. Versionado
+# 16. Versionado
 
 Versión inicial
 
