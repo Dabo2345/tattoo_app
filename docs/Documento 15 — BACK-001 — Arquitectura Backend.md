@@ -402,9 +402,44 @@ Helpers en `/src/lib/api/middleware.ts`:
 
 ```typescript
 // withErrorHandler: captura errores y los loguea con Pino
-// withAdminAuth: verifica sesión Better Auth antes de ejecutar handler
+// withAdminAuth: verifica sesión Better Auth + envuelve con withErrorHandler
 // withRateLimit: aplica rate limiting por IP
 ```
+
+### Patrón obligatorio para rutas admin (`/api/admin/*`)
+
+Todos los Route Handlers admin deben usar `withAdminAuth` de `@/lib/api/middleware` (no de `@/lib/auth`). Este wrapper combina autenticación + manejo de errores y proporciona la sesión al handler:
+
+```typescript
+import { withAdminAuth } from "@/lib/api/middleware"
+import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
+import { createApiResponse } from "@/lib/api/response"
+
+export const POST = withAdminAuth(
+  async (request: NextRequest, ctx, session): Promise<NextResponse> => {
+    const { id } = await ctx.params
+
+    const entity = await bookingRepository.findAppointmentById(id)
+    if (!entity) throw new AppointmentNotFoundError()
+
+    await auditService.log("ACTION", id, {
+      entityType: "Appointment",
+      adminUserId: session.user.id,
+      metadata: { ... }
+    })
+
+    return createApiResponse({ ... })
+  }
+)
+```
+
+Reglas:
+- **NO** usar `withAdminAuth` de `@/lib/auth` (patrón obsoleto)
+- **NO** llamar a `prisma` directamente en route handlers — usar repositorios
+- **NO** usar `prisma.auditLog.create()` directamente — usar `auditService.log()`
+- **NO** usar `Response.json({ success: false, ... })` para errores — lanzar excepciones (`throw new DomainError(...)`)
+- **SÍ** usar `createApiResponse(data)` para respuestas de éxito
 
 ## 8.3 Rutas protegidas
 

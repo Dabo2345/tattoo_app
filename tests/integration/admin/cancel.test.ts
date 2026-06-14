@@ -1,33 +1,49 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { NextRequest, NextResponse } from "next/server"
 import { POST } from "@/app/api/admin/appointments/[id]/cancel/route"
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock("@/lib/auth", () => ({
-  withAdminAuth: vi.fn(async (_req: Request, handler: (s: unknown) => Promise<Response>) =>
-    handler({ user: { id: "admin-1", email: "admin@example.com" } })
-  ),
-}))
+vi.mock("@/lib/api/middleware", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/middleware")>()
+  return {
+    ...actual,
+    withAdminAuth: vi.fn(
+      (handler: (req: unknown, ctx: unknown, session: unknown) => Promise<NextResponse>) =>
+        actual.withErrorHandler(async (req, ctx) =>
+          handler(req, ctx, { user: { id: "admin-1", email: "admin@example.com" } })
+        )
+    ),
+  }
+})
 
-vi.mock("@/lib/db/prisma", () => ({
-  prisma: {
-    appointment: {
-      findFirst: vi.fn(),
-      update: vi.fn(),
-    },
-    auditLog: {
-      create: vi.fn(),
-    },
+vi.mock("@/modules/booking/repositories/booking-repository", () => ({
+  bookingRepository: {
+    findAppointmentById: vi.fn(),
+    cancelAppointment: vi.fn(),
   },
 }))
 
-import { withAdminAuth } from "@/lib/auth"
-import { prisma } from "@/lib/db/prisma"
+vi.mock("@/modules/audit/services/audit-service", () => ({
+  auditService: {
+    log: vi.fn(),
+  },
+}))
 
-const mockFindFirst = vi.mocked(prisma.appointment.findFirst)
-const mockUpdate = vi.mocked(prisma.appointment.update)
-const mockAuditCreate = vi.mocked(prisma.auditLog.create)
-const mockWithAdminAuth = vi.mocked(withAdminAuth)
+vi.mock("@/modules/notification/services/notification-service", () => ({
+  notificationService: {
+    sendAppointmentCancelled: vi.fn(),
+  },
+}))
+
+import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { auditService } from "@/modules/audit/services/audit-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
+
+const mockFindAppointmentById = vi.mocked(bookingRepository.findAppointmentById)
+const mockCancelAppointment = vi.mocked(bookingRepository.cancelAppointment)
+const mockAuditLog = vi.mocked(auditService.log)
+const mockSendCancelled = vi.mocked(notificationService.sendAppointmentCancelled)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -38,12 +54,13 @@ function makeAppointment(overrides: Record<string, unknown> = {}) {
     status: "CONFIRMED",
     startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
     endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000),
+    clientId: "client-1",
     ...overrides,
   }
 }
 
-function makeRequest() {
-  return new Request("http://localhost:3000/api/admin/appointments/apt-1/cancel", {
+function makeRequest(): NextRequest {
+  return new NextRequest("http://localhost:3000/api/admin/appointments/apt-1/cancel", {
     method: "POST",
   })
 }
@@ -54,21 +71,17 @@ const params = Promise.resolve({ id: "apt-1" })
 
 describe("POST /api/admin/appointments/[id]/cancel", () => {
   beforeEach(() => {
-    vi.resetAllMocks()
-    mockUpdate.mockResolvedValue({} as never)
-    mockAuditCreate.mockResolvedValue({} as never)
+    // clearAllMocks preserves factory implementations (withAdminAuth wrapper)
+    // while resetting per-test return values and call history
+    vi.clearAllMocks()
   })
 
-  it("retorna 401 si no hay sesión admin", async () => {
-    mockWithAdminAuth.mockResolvedValueOnce(
-      Response.json({ success: false, error: "No autorizado" }, { status: 401 })
-    )
-    const res = await POST(makeRequest(), { params })
-    expect(res.status).toBe(401)
-  })
+  // Note: 401 auth rejection is tested in middleware.test.ts.
+  // withAdminAuth is evaluated at module import time in the new pattern,
+  // so per-request auth simulation is handled at the middleware layer.
 
   it("retorna 404 si la cita no existe", async () => {
-    mockFindFirst.mockResolvedValueOnce(null)
+    mockFindAppointmentById.mockResolvedValueOnce(null)
     const res = await POST(makeRequest(), { params })
     expect(res.status).toBe(404)
     const body = await res.json()
@@ -76,7 +89,7 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
   })
 
   it("retorna 409 si la cita ya está cancelada", async () => {
-    mockFindFirst.mockResolvedValueOnce(makeAppointment({ status: "CANCELLED" }) as never)
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment({ status: "CANCELLED" }) as never)
     const res = await POST(makeRequest(), { params })
     expect(res.status).toBe(409)
     const body = await res.json()
@@ -84,7 +97,15 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
   })
 
   it("retorna 409 si la cita está completada", async () => {
-    mockFindFirst.mockResolvedValueOnce(makeAppointment({ status: "COMPLETED" }) as never)
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment({ status: "COMPLETED" }) as never)
+    const res = await POST(makeRequest(), { params })
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error.code).toBe("ALREADY_CANCELLED")
+  })
+
+  it("retorna 409 si la cita tiene estado NO_SHOW", async () => {
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment({ status: "NO_SHOW" }) as never)
     const res = await POST(makeRequest(), { params })
     expect(res.status).toBe(409)
     const body = await res.json()
@@ -92,7 +113,7 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
   })
 
   it("retorna 200 con refundEligible=true cuando la cita es en 7 días", async () => {
-    mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
     const res = await POST(makeRequest(), { params })
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -103,33 +124,35 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
 
   it("retorna 200 con refundEligible=false cuando la cita es en menos de 4 días", async () => {
     const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 days from now
-    mockFindFirst.mockResolvedValueOnce(makeAppointment({ startsAt: soon }) as never)
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment({ startsAt: soon }) as never)
     const res = await POST(makeRequest(), { params })
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.data.refundEligible).toBe(false)
   })
 
-  it("actualiza el status a CANCELLED en la base de datos", async () => {
-    mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+  it("cancela el appointment en el repositorio", async () => {
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
     await POST(makeRequest(), { params })
-    expect(mockUpdate).toHaveBeenCalledWith({
-      where: { id: "apt-1" },
-      data: { status: "CANCELLED" },
-    })
+    expect(mockCancelAppointment).toHaveBeenCalledWith("apt-1")
   })
 
   it("crea un AuditLog con la acción APPOINTMENT_CANCELLED", async () => {
-    mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
     await POST(makeRequest(), { params })
-    expect(mockAuditCreate).toHaveBeenCalledWith(
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "APPOINTMENT_CANCELLED",
+      "apt-1",
       expect.objectContaining({
-        data: expect.objectContaining({
-          action: "APPOINTMENT_CANCELLED",
-          entityId: "apt-1",
-          adminUserId: "admin-1",
-        }),
+        entityType: "Appointment",
+        adminUserId: "admin-1",
       })
     )
+  })
+
+  it("envía notificación de cancelación", async () => {
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
+    await POST(makeRequest(), { params })
+    expect(mockSendCancelled).toHaveBeenCalledWith("apt-1")
   })
 })

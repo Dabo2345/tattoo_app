@@ -1,52 +1,31 @@
+import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { withAdminAuth } from "@/lib/auth"
+import { withAdminAuth } from "@/lib/api/middleware"
+import { createApiResponse } from "@/lib/api/response"
+import { AppointmentNotFoundError, SlotNotAvailableError } from "@/lib/api/errors"
+import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { prisma } from "@/lib/db/prisma"
+import { auditService } from "@/modules/audit/services/audit-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
 
-const rescheduleBodySchema = z.object({
+const bodySchema = z.object({
   newStartAt: z.string().datetime({ message: "newStartAt debe ser una fecha ISO válida" }),
 })
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  return withAdminAuth(request, async (session) => {
-    const { id } = await params
+export const POST = withAdminAuth(
+  async (request: NextRequest, ctx, session): Promise<NextResponse> => {
+    const id = (await ctx.params).id!
+    const body = await request.json()
+    const { newStartAt } = bodySchema.parse(body)
 
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      return Response.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "Body inválido" } },
-        { status: 400 }
-      )
-    }
-
-    const parsed = rescheduleBodySchema.safeParse(body)
-    if (!parsed.success) {
-      const message = parsed.error.issues[0]?.message ?? "Parámetros inválidos"
-      return Response.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message } },
-        { status: 400 }
-      )
-    }
-
-    const { newStartAt } = parsed.data
-
-    const appointment = await prisma.appointment.findFirst({
-      where: { id, deletedAt: null },
-    })
-
-    if (!appointment) {
-      return Response.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Cita no encontrada" } },
-        { status: 404 }
-      )
-    }
+    const appointment = await bookingRepository.findAppointmentById(id)
+    if (!appointment) throw new AppointmentNotFoundError()
 
     const durationMs = appointment.endsAt.getTime() - appointment.startsAt.getTime()
     const newStartDate = new Date(newStartAt)
     const newEndsAt = new Date(newStartDate.getTime() + durationMs)
 
+    // Conflict check — pending migration to calendarService.assertSlotAvailable (#055)
     const conflict = await prisma.appointment.findFirst({
       where: {
         id: { not: id },
@@ -56,48 +35,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       },
     })
 
-    if (conflict) {
-      return Response.json(
-        {
-          success: false,
-          error: {
-            code: "SLOT_NOT_AVAILABLE",
-            message: "El nuevo horario está ocupado por otra cita",
-          },
-        },
-        { status: 409 }
-      )
-    }
+    if (conflict) throw new SlotNotAvailableError()
 
-    await prisma.appointment.update({
-      where: { id },
-      data: { startsAt: newStartDate, endsAt: newEndsAt },
-    })
+    await bookingRepository.rescheduleAppointment(id, newStartDate, newEndsAt)
 
-    await prisma.auditLog.create({
-      data: {
-        action: "APPOINTMENT_RESCHEDULED",
-        entityId: id,
-        entityType: "Appointment",
-        adminUserId: session.user.id,
-        metadata: {
-          oldStartAt: appointment.startsAt.toISOString(),
-          newStartAt,
-        },
+    await auditService.log("APPOINTMENT_RESCHEDULED", id, {
+      entityType: "Appointment",
+      adminUserId: session.user.id,
+      metadata: {
+        oldStartAt: appointment.startsAt.toISOString(),
+        newStartAt,
       },
     })
 
     await notificationService.sendAppointmentRescheduled(id, appointment.startsAt)
 
-    return Response.json({
-      success: true,
-      data: {
-        appointment: {
-          id,
-          startsAt: newStartDate.toISOString(),
-          endsAt: newEndsAt.toISOString(),
-        },
+    return createApiResponse({
+      appointment: {
+        id,
+        startsAt: newStartDate.toISOString(),
+        endsAt: newEndsAt.toISOString(),
       },
     })
-  })
-}
+  }
+)
