@@ -3,6 +3,7 @@ import { z } from "zod"
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
 import { env } from "@/lib/env"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -14,7 +15,7 @@ const SESSION_LINK_EXPIRY_DAYS = 30
 const postBodySchema = z.object({
   consultationId: z.string().min(1, "'consultationId' es requerido"),
   durationMinutes: z
-    .number({ invalid_type_error: "'durationMinutes' debe ser un número" })
+    .number({ error: "'durationMinutes' debe ser un número" })
     .int("'durationMinutes' debe ser un entero")
     .min(30, "'durationMinutes' mínimo es 30")
     .max(480, "'durationMinutes' máximo es 480"),
@@ -144,6 +145,8 @@ export async function POST(request: Request) {
     })
 
     const linkUrl = `${env.NEXT_PUBLIC_APP_URL}/book/${token}`
+
+    await notificationService.sendSessionLink(consultationId, token)
 
     return Response.json({
       success: true,

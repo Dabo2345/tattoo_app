@@ -11,12 +11,13 @@ vi.mock("@/modules/gallery/repositories/gallery-repository", () => ({
 
 import { galleryRepository } from "@/modules/gallery/repositories/gallery-repository"
 import { GET } from "@/app/api/gallery/route"
+import type { GalleryImageData } from "@/modules/gallery/types"
 
 const mockFindAll = vi.mocked(galleryRepository.findAll)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-const mockImages = [
+const mockImages: GalleryImageData[] = [
   {
     id: "1",
     url: "https://example.com/img1.jpg",
@@ -53,7 +54,7 @@ describe("GET /api/gallery", () => {
   })
 
   it("passes tag parameter to repository when ?tag= is provided", async () => {
-    mockFindAll.mockResolvedValue([mockImages[0]])
+    mockFindAll.mockResolvedValue([mockImages[0]!])
 
     const req = new NextRequest("http://localhost/api/gallery?tag=blackwork")
     const res = await GET(req)

@@ -23,9 +23,16 @@ vi.mock("@/modules/booking/services/magic-link-service", () => ({
   },
 }))
 
+vi.mock("@/modules/notification/services/notification-service", () => ({
+  notificationService: {
+    sendMagicLink: vi.fn(),
+  },
+}))
+
 import { clientRepository } from "@/modules/booking/repositories/client-repository"
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { magicLinkService } from "@/modules/booking/services/magic-link-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 import { POST } from "@/app/api/magic-links/request/route"
 import { GET } from "@/app/api/magic-links/[token]/route"
 
@@ -35,6 +42,7 @@ const mockFindLatestAppointment = vi.mocked(
 )
 const mockCreateMagicLink = vi.mocked(magicLinkService.createMagicLink)
 const mockValidateMagicLink = vi.mocked(magicLinkService.validateMagicLink)
+const mockSendMagicLink = vi.mocked(notificationService.sendMagicLink)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -103,6 +111,7 @@ describe("POST /api/magic-links/request", () => {
       token: "a".repeat(64),
       expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
     })
+    mockSendMagicLink.mockResolvedValue(undefined)
   })
 
   it("returns 200 { requested: true } when MagicLink is created successfully", async () => {
@@ -154,6 +163,15 @@ describe("POST /api/magic-links/request", () => {
     expect(res.status).toBe(400)
     expect(body.success).toBe(false)
     expect(body.error.code).toBe("VALIDATION_ERROR")
+  })
+
+  it("calls notificationService.sendMagicLink after creating the link", async () => {
+    mockFindByEmail.mockResolvedValue(mockClient)
+    mockFindLatestAppointment.mockResolvedValue(mockAppointment)
+
+    await POST(makePostRequest({ email: "ana@example.com" }), { params: Promise.resolve({}) })
+
+    expect(mockSendMagicLink).toHaveBeenCalledWith("appt-001", "a".repeat(64))
   })
 })
 

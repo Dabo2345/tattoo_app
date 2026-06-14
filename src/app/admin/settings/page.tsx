@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { prisma } from "@/lib/db/prisma"
-import { STUDIO_CONFIG_ID, type BreakTime } from "@/app/admin/settings/actions"
+import { type BreakTime } from "@/app/admin/settings/actions"
 import { WorkingHoursForm } from "@/components/admin/working-hours-form"
 import { BreakTimesForm } from "@/components/admin/break-times-form"
 import { DepositForm } from "@/components/admin/deposit-form"
@@ -22,7 +22,9 @@ const defaults = {
 }
 
 export default async function AdminSettingsPage() {
-  const config = await prisma.studioConfig.findUnique({ where: { id: STUDIO_CONFIG_ID } })
+  const config = await prisma.studioConfig.findUnique({
+    where: { id: "00000000-0000-0000-0000-000000000003" },
+  })
 
   const workingHoursInitial = config
     ? {

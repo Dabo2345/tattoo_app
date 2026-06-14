@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, MessageSquare, Pencil, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { prisma } from "@/lib/db/prisma"
 
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
@@ -11,7 +13,9 @@ export const metadata: Metadata = {
     "Estudio de tatuajes profesional. Diseños únicos y personalizados realizados con precisión y pasión. Reserva tu consulta hoy.",
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ARTIST_PROFILE_ID = "00000000-0000-0000-0000-000000000001"
 
 const HOW_IT_WORKS = [
   {
@@ -37,14 +41,24 @@ const HOW_IT_WORKS = [
   },
 ]
 
-const FEATURED_PLACEHOLDERS = Array.from({ length: 6 }, (_, i) => ({
-  id: i + 1,
-  aspectClass: i % 3 === 0 ? "aspect-[3/4]" : i % 3 === 1 ? "aspect-square" : "aspect-[4/3]",
-}))
+const ASPECT_CLASSES = ["aspect-[3/4]", "aspect-square", "aspect-[4/3]"]
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [featuredImages, profile] = await Promise.all([
+    prisma.galleryImage.findMany({
+      where: { deletedAt: null },
+      orderBy: { order: "asc" },
+      take: 6,
+    }),
+    prisma.artistProfile.findUnique({ where: { id: ARTIST_PROFILE_ID } }),
+  ])
+
+  const artistName = profile?.name ?? null
+  const artistBio = profile?.bio ? profile.bio.slice(0, 300) : null
+  const artistSpecialties = profile?.specialties ?? []
+
   return (
     <>
       {/* ── Hero ───────────────────────────────────────────────────────── */}
@@ -141,16 +155,35 @@ export default function HomePage() {
             className="grid grid-cols-2 md:grid-cols-3 gap-3"
             aria-label="Galería de trabajos destacados"
           >
-            {FEATURED_PLACEHOLDERS.map(({ id, aspectClass }) => (
-              <li key={id}>
-                <Link
-                  href="/galeria"
-                  className={`block ${aspectClass} rounded-lg bg-surface border border-border
-                    hover:border-accent transition-colors`}
-                  aria-label={`Ver trabajo ${id} en la galería`}
-                />
-              </li>
-            ))}
+            {featuredImages.length > 0
+              ? featuredImages.map((image, i) => (
+                  <li key={image.id}>
+                    <Link
+                      href="/galeria"
+                      className={`block relative ${ASPECT_CLASSES[i % 3]} rounded-lg overflow-hidden
+                        bg-surface border border-border hover:border-accent transition-colors`}
+                      aria-label={image.altText ?? `Ver trabajo en la galería`}
+                    >
+                      <Image
+                        src={image.url}
+                        alt={image.altText ?? "Trabajo de tatuaje"}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 50vw, 33vw"
+                      />
+                    </Link>
+                  </li>
+                ))
+              : Array.from({ length: 6 }, (_, i) => (
+                  <li key={i}>
+                    <Link
+                      href="/galeria"
+                      className={`block ${ASPECT_CLASSES[i % 3]} rounded-lg bg-surface border border-border
+                        hover:border-accent transition-colors`}
+                      aria-label={`Ver trabajo ${i + 1} en la galería`}
+                    />
+                  </li>
+                ))}
           </ul>
         </div>
       </section>
@@ -162,16 +195,35 @@ export default function HomePage() {
       >
         <div className="max-w-3xl mx-auto text-center">
           <h2 id="artist-heading" className="text-h2 text-foreground mb-4">
-            El artista detrás del estudio
+            {artistName ? `${artistName}` : "El artista detrás del estudio"}
           </h2>
-          <p className="text-body-lg text-foreground-secondary mb-4">
-            Con más de una década de experiencia en tatuajes, combino técnica depurada con una
-            sensibilidad artística única para crear piezas que trascienden lo efímero.
-          </p>
-          <p className="text-body text-foreground-secondary mb-10">
-            Especializado en blackwork, realismo y geometric, cada diseño es el resultado de una
-            conversación profunda con el cliente y un compromiso total con la excelencia.
-          </p>
+          {artistBio ? (
+            <p className="text-body-lg text-foreground-secondary mb-10">{artistBio}</p>
+          ) : (
+            <>
+              <p className="text-body-lg text-foreground-secondary mb-4">
+                Con más de una década de experiencia en tatuajes, combino técnica depurada con una
+                sensibilidad artística única para crear piezas que trascienden lo efímero.
+              </p>
+              <p className="text-body text-foreground-secondary mb-10">
+                Especializado en blackwork, realismo y geometric, cada diseño es el resultado de una
+                conversación profunda con el cliente y un compromiso total con la excelencia.
+              </p>
+            </>
+          )}
+          {artistSpecialties.length > 0 && (
+            <ul className="flex flex-wrap justify-center gap-2 mb-10" aria-label="Especialidades">
+              {artistSpecialties.map((s) => (
+                <li
+                  key={s}
+                  className="px-3 py-1 rounded-full border border-border text-foreground-secondary
+                    text-xs font-medium bg-surface"
+                >
+                  {s}
+                </li>
+              ))}
+            </ul>
+          )}
           <Button asChild variant="outline">
             <Link href="/perfil">Conocer al artista</Link>
           </Button>

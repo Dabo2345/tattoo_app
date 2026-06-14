@@ -104,7 +104,7 @@ describe("sessionLinkService.createSessionLink", () => {
     const result = await sessionLinkService.createSessionLink(validInput)
 
     expect(mockCreateSessionLink).toHaveBeenCalledOnce()
-    const call = mockCreateSessionLink.mock.calls[0][0]
+    const call = mockCreateSessionLink.mock.calls[0]![0]!
     expect(call.tokenHash).not.toBe(result.token)
     expect(call.tokenHash).toMatch(/^[0-9a-f]{64}$/)
   })

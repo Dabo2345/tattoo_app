@@ -10,6 +10,9 @@ export const metadata: Metadata = {
     "Portfolio de trabajos realizados en el estudio. Blackwork, realismo, geometric y más estilos.",
 }
 
+// Gallery content changes when the admin uploads images — always render fresh.
+export const dynamic = "force-dynamic"
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function GaleriaPage() {

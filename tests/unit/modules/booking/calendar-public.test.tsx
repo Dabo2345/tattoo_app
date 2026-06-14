@@ -44,7 +44,7 @@ describe("CalendarPublic", () => {
     renderCalendar({ availableDates: ["2026-08-10"], onDateSelect })
     fireEvent.click(screen.getByRole("button", { name: /^10 agosto/i }))
     expect(onDateSelect).toHaveBeenCalledOnce()
-    expect(onDateSelect.mock.calls[0][0]).toBeInstanceOf(Date)
+    expect(onDateSelect.mock.calls[0]![0]!).toBeInstanceOf(Date)
   })
 
   it("does not call onDateSelect when unavailable day is clicked", () => {

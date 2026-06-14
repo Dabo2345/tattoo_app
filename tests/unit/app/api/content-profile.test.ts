@@ -1,25 +1,61 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
+
+// ─── Mocks ────────────────────────────────────────────────────────────────────
+
+vi.mock("@/lib/db/prisma", () => ({
+  prisma: {
+    artistProfile: {
+      findUnique: vi.fn(),
+    },
+  },
+}))
+
 import { GET } from "@/app/api/content/profile/route"
-import { artistProfile } from "@/modules/content/data/artist-profile"
+import { prisma } from "@/lib/db/prisma"
+
+const mockFindUnique = vi.mocked(prisma.artistProfile.findUnique)
+
+const ARTIST_PROFILE_ID = "00000000-0000-0000-0000-000000000001"
+
+const fakeProfile = {
+  id: ARTIST_PROFILE_ID,
+  name: "Alex Moreno",
+  bio: "Tatuador con más de una década de experiencia.",
+  specialties: ["Blackwork", "Realismo"],
+  instagramHandle: "alexmoreno.ink",
+  yearsOfExperience: 12,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("GET /api/content/profile", () => {
-  it("returns 200 with artist profile data", async () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns 200 with profile data from DB", async () => {
+    mockFindUnique.mockResolvedValue(fakeProfile)
     const res = await GET()
     expect(res.status).toBe(200)
-  })
-
-  it("response has success:true and data structure", async () => {
-    const res = await GET()
     const body = await res.json()
     expect(body.success).toBe(true)
-    expect(body.data).toBeDefined()
+    expect(body.data.name).toBe(fakeProfile.name)
+    expect(body.data.specialties).toEqual(fakeProfile.specialties)
   })
 
-  it("data matches the static artist profile", async () => {
+  it("returns 404 when profile does not exist in DB", async () => {
+    mockFindUnique.mockResolvedValue(null)
     const res = await GET()
+    expect(res.status).toBe(404)
     const body = await res.json()
-    expect(body.data.name).toBe(artistProfile.name)
-    expect(body.data.specialties).toEqual(artistProfile.specialties)
-    expect(Array.isArray(body.data.specialties)).toBe(true)
+    expect(body.success).toBe(false)
+  })
+
+  it("queries DB with the correct singleton ID", async () => {
+    mockFindUnique.mockResolvedValue(fakeProfile)
+    await GET()
+    expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: ARTIST_PROFILE_ID } })
   })
 })
