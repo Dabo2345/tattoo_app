@@ -193,7 +193,6 @@ function SlotStep({
             return (
               <button
                 key={slot.startsAt}
-                role="listitem"
                 onClick={() => setSelected(slot)}
                 aria-pressed={isSelected}
                 className={cn(

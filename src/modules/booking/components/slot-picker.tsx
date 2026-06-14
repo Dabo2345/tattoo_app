@@ -69,7 +69,6 @@ export function SlotPicker({ date, selectedSlot, onSlotSelect }: SlotPickerProps
         return (
           <button
             key={slot.startsAt}
-            role="listitem"
             onClick={() => onSlotSelect(slot)}
             aria-pressed={isSelected}
             className={cn(

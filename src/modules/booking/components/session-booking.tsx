@@ -257,7 +257,6 @@ export function SessionBooking({ token, data }: { token: string; data: SessionLi
                 return (
                   <button
                     key={slot.startsAt}
-                    role="listitem"
                     onClick={() => setSelectedSlot(slot)}
                     aria-pressed={isSelected}
                     className={cn(

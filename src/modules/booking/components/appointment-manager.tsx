@@ -346,7 +346,6 @@ export function AppointmentManager({ appointment }: { appointment: AppointmentDa
                 return (
                   <button
                     key={slot.startsAt}
-                    role="listitem"
                     onClick={() => setSelectedSlot(slot)}
                     aria-pressed={isSelected}
                     className={cn(
