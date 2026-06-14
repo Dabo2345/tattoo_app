@@ -464,6 +464,14 @@ POST
 
 /api/admin/appointments/:id/reschedule
 
+Verifica disponibilidad del nuevo slot consultando tanto citas existentes como BlockedPeriods via `calendarService.assertSlotAvailable()`. Preserva la duración original de la cita. Envía email de reprogramación al cliente.
+
+Body: `{ newStartAt: string (ISO 8601) }`
+
+Respuesta 200: `{ appointment: { id, startsAt, endsAt } }`
+
+409 `SLOT_NOT_AVAILABLE`: nuevo slot ocupado por otra cita o por un BlockedPeriod.
+
 ---
 
 # 10. Uploads

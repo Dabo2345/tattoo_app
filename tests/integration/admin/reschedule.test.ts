@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { POST } from "@/app/api/admin/appointments/[id]/reschedule/route"
+import { SlotNotAvailableError } from "@/lib/api/errors"
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -21,13 +22,29 @@ vi.mock("@/lib/db/prisma", () => ({
   },
 }))
 
+vi.mock("@/modules/calendar/services/calendar-service", () => ({
+  calendarService: {
+    assertSlotAvailable: vi.fn(),
+  },
+}))
+
+vi.mock("@/modules/notification/services/notification-service", () => ({
+  notificationService: {
+    sendAppointmentRescheduled: vi.fn(),
+  },
+}))
+
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
+import { calendarService } from "@/modules/calendar/services/calendar-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 const mockFindFirst = vi.mocked(prisma.appointment.findFirst)
 const mockUpdate = vi.mocked(prisma.appointment.update)
 const mockAuditCreate = vi.mocked(prisma.auditLog.create)
 const mockWithAdminAuth = vi.mocked(withAdminAuth)
+const mockAssertSlotAvailable = vi.mocked(calendarService.assertSlotAvailable)
+const mockSendRescheduled = vi.mocked(notificationService.sendAppointmentRescheduled)
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -63,6 +80,8 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
     vi.resetAllMocks()
     mockUpdate.mockResolvedValue({} as never)
     mockAuditCreate.mockResolvedValue({} as never)
+    mockAssertSlotAvailable.mockResolvedValue(undefined)
+    mockSendRescheduled.mockResolvedValue(undefined)
   })
 
   it("retorna 401 si no hay sesión admin", async () => {
@@ -99,11 +118,9 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
     expect(body.error.code).toBe("NOT_FOUND")
   })
 
-  it("retorna 409 si el nuevo slot está ocupado", async () => {
-    // First call: find current appointment
+  it("retorna 409 si el nuevo slot está ocupado por otra cita", async () => {
     mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
-    // Second call: find conflict
-    mockFindFirst.mockResolvedValueOnce({ id: "apt-other" } as never)
+    mockAssertSlotAvailable.mockRejectedValueOnce(new SlotNotAvailableError())
 
     const res = await POST(makeRequest({ newStartAt: NEW_START }), { params })
     expect(res.status).toBe(409)
@@ -111,9 +128,19 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
     expect(body.error.code).toBe("SLOT_NOT_AVAILABLE")
   })
 
+  it("retorna 409 si el nuevo slot coincide con un BlockedPeriod", async () => {
+    mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+    mockAssertSlotAvailable.mockRejectedValueOnce(new SlotNotAvailableError())
+
+    const res = await POST(makeRequest({ newStartAt: NEW_START }), { params })
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error.code).toBe("SLOT_NOT_AVAILABLE")
+    expect(mockAssertSlotAvailable).toHaveBeenCalledOnce()
+  })
+
   it("retorna 200 y actualiza la cita en caso exitoso", async () => {
     mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindFirst.mockResolvedValueOnce(null) // no conflict
 
     const res = await POST(makeRequest({ newStartAt: NEW_START }), { params })
     expect(res.status).toBe(200)
@@ -124,19 +151,26 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
 
   it("calcula newEndsAt preservando la duración original (90 min)", async () => {
     mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindFirst.mockResolvedValueOnce(null)
 
     const res = await POST(makeRequest({ newStartAt: NEW_START }), { params })
     const body = await res.json()
 
-    // original duration = 90 min → newEndsAt = NEW_START + 90 min
     const expectedEnd = new Date(new Date(NEW_START).getTime() + 90 * 60 * 1000).toISOString()
     expect(body.data.appointment.endsAt).toBe(expectedEnd)
   })
 
+  it("llama a calendarService.assertSlotAvailable con el nuevo rango de fechas", async () => {
+    mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
+
+    await POST(makeRequest({ newStartAt: NEW_START }), { params })
+
+    const expectedStart = new Date(NEW_START)
+    const expectedEnd = new Date(expectedStart.getTime() + 90 * 60 * 1000)
+    expect(mockAssertSlotAvailable).toHaveBeenCalledWith(expectedStart, expectedEnd)
+  })
+
   it("crea un AuditLog con APPOINTMENT_RESCHEDULED y metadata de fechas", async () => {
     mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindFirst.mockResolvedValueOnce(null)
 
     await POST(makeRequest({ newStartAt: NEW_START }), { params })
 
@@ -155,18 +189,11 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
     )
   })
 
-  it("no cuenta la propia cita como conflicto (query excluye el id actual)", async () => {
+  it("envía notificación de reprogramación con la fecha anterior", async () => {
     mockFindFirst.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindFirst.mockResolvedValueOnce(null)
 
     await POST(makeRequest({ newStartAt: NEW_START }), { params })
 
-    // The conflict query must exclude the current appointment id
-    const conflictCall = mockFindFirst.mock.calls[1]
-    expect(conflictCall![0]).toMatchObject({
-      where: expect.objectContaining({
-        id: { not: "apt-1" },
-      }),
-    })
+    expect(mockSendRescheduled).toHaveBeenCalledWith("apt-1", ORIGINAL_START)
   })
 })
