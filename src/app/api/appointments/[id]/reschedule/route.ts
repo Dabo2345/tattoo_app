@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createHash } from "crypto"
 import { z } from "zod"
 import { withErrorHandler } from "@/lib/api/middleware"
 import { createApiResponse } from "@/lib/api/response"
@@ -8,6 +7,7 @@ import {
   LinkExpiredError,
   RescheduleNotAllowedError,
 } from "@/lib/api/errors"
+import { hashToken } from "@/lib/utils/tokens"
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { daysUntilAppointment } from "@/modules/payment/services/deposit-policy"
@@ -37,7 +37,7 @@ export const POST = withErrorHandler(
     const { magicLinkToken, newStartAt: newStartAtRaw } = bodySchema.parse(body)
 
     // Validar MagicLink: hash SHA-256 → buscar en DB
-    const tokenHash = createHash("sha256").update(magicLinkToken).digest("hex")
+    const tokenHash = hashToken(magicLinkToken)
     const magicLink = await bookingRepository.findMagicLinkByHash(tokenHash)
 
     if (!magicLink) {
