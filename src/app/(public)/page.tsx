@@ -5,6 +5,8 @@ import { ArrowRight, MessageSquare, Pencil, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { prisma } from "@/lib/db/prisma"
 
+export const dynamic = "force-dynamic"
+
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {

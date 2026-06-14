@@ -4,6 +4,8 @@ import { AtSign, ArrowRight, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { prisma } from "@/lib/db/prisma"
 
+export const dynamic = "force-dynamic"
+
 const ARTIST_PROFILE_ID = "00000000-0000-0000-0000-000000000001"
 
 // ─── Metadata ────────────────────────────────────────────────────────────────

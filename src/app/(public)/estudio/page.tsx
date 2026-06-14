@@ -4,6 +4,8 @@ import { MapPin, Phone, Mail, ShieldCheck, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { prisma } from "@/lib/db/prisma"
 
+export const dynamic = "force-dynamic"
+
 const STUDIO_INFO_ID = "00000000-0000-0000-0000-000000000002"
 
 // ─── Metadata ────────────────────────────────────────────────────────────────
