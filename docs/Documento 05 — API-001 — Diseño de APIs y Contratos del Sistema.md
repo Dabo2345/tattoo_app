@@ -180,11 +180,14 @@ POST
 
 /api/appointments/:id/cancel
 
----
+Body: `{ magicLinkToken: string }`
 
-Resultado
+Aplica política de depósito (RB-013/014). `refundAmount` refleja el importe real del registro `Payment` en DB — no un valor calculado ni hardcodeado.
 
-CANCELLED
+Respuesta 200: `{ cancelled: true, refunded: boolean, refundAmount: number }`
+
+- `refundAmount` > 0 solo cuando `refunded: true`; proviene de `Payment.amount`
+- `refundAmount = 0` si no hay reembolso o si no existe Payment en DB
 
 ---
 
