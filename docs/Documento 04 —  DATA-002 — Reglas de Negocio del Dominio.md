@@ -86,13 +86,15 @@ No se permiten reservas solapadas.
 
 # RB-013
 
-La cancelación con 4 días o más genera reembolso automático.
+La cancelación con 4 días o más de antelación genera reembolso automático vía Stripe.
+Los días se calculan como días completos usando `Math.floor` de la diferencia en milisegundos.
 
 ---
 
 # RB-014
 
-La cancelación con menos de 4 días retiene el depósito.
+La cancelación con menos de 4 días completos de antelación retiene el depósito.
+Los días se calculan con `Math.floor` (igual que RB-013).
 
 ---
 
@@ -129,3 +131,21 @@ Las imágenes eliminadas pasan primero a Soft Delete.
 # RB-020
 
 Toda acción administrativa relevante genera un AuditLog.
+
+---
+
+# RB-021
+
+El sistema de recordatorios utiliza ventanas de tiempo centradas en los 24h y 2h previos a la cita:
+- Recordatorio 24h: se envía si `startsAt` está entre `now + 23.5h` y `now + 24.5h`
+- Recordatorio 2h: se envía si `startsAt` está entre `now + 1.5h` y `now + 2.5h`
+
+Solo se envían a appointments en estado `CONFIRMED`.
+
+---
+
+# RB-022
+
+El envío de recordatorios es idempotente: antes de enviar un recordatorio, el sistema verifica
+si ya existe un registro `Notification` del mismo tipo (`REMINDER_24H` / `REMINDER_2H`) para
+ese appointment. Si existe, se ignora sin reenviar.
