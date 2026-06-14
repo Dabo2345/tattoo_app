@@ -1,4 +1,4 @@
-import { Button, Heading, Section, Text } from "@react-email/components"
+import { Heading, Section, Text } from "@react-email/components"
 import type { AppointmentCancelledPayload } from "@/modules/notification/types"
 import { BaseLayout } from "./base-layout"
 

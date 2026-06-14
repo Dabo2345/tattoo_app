@@ -1,4 +1,4 @@
-import { Body, Container, Head, Html, Preview, Section, Text, Hr } from "@react-email/components"
+import { Body, Container, Head, Html, Preview, Text, Hr } from "@react-email/components"
 import type { ReactNode } from "react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
