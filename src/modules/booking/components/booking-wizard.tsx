@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { z } from "zod"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { consultationSchema, type ConsultationFormData } from "../schemas/consultation-schema"

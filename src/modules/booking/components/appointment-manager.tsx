@@ -137,7 +137,7 @@ export function AppointmentManager({ appointment }: { appointment: AppointmentDa
       .then((body) => setSlots(body.data ?? []))
       .catch(() => setSlots([]))
       .finally(() => setSlotsLoading(false))
-  }, [rescheduleDate])
+  }, [rescheduleDate, appointment.type])
 
   // ── Cancel ────────────────────────────────────────────────────────────────
 
