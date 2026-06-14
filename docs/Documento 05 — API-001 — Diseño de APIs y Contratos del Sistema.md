@@ -180,11 +180,11 @@ POST
 
 /api/appointments/:id/cancel
 
----
+Requiere `magicLinkToken` en el body. Aplica política de depósito (RB-013/014) y envía email de cancelación al cliente.
 
-Resultado
+Body: `{ magicLinkToken: string }`
 
-CANCELLED
+Respuesta 200: `{ cancelled: true, refunded: boolean, refundAmount: number }`
 
 ---
 
@@ -194,13 +194,11 @@ POST
 
 /api/appointments/:id/reschedule
 
----
+Requiere `magicLinkToken` y `newStartAt` en el body. Solo permitido con ≥4 días de antelación (RB-015). Envía email de reprogramación al cliente con la fecha anterior y la nueva.
 
-Body
+Body: `{ magicLinkToken: string, newStartAt: string (ISO 8601) }`
 
-{
-newStartAt
-}
+Respuesta 200: `{ rescheduled: true, newStartAt: string, newEndsAt: string }`
 
 ---
 

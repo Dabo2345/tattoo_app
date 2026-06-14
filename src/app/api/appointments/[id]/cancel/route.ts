@@ -7,6 +7,7 @@ import { AppointmentNotFoundError, LinkExpiredError } from "@/lib/api/errors"
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
 import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
 import { auditService } from "@/modules/audit/services/audit-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 
 const bodySchema = z.object({
   magicLinkToken: z.string().min(1, "magicLinkToken es obligatorio"),
@@ -72,6 +73,8 @@ export const POST = withErrorHandler(
         ...(policyResult.refunded ? { stripeRefundId: policyResult.stripeRefundId } : {}),
       },
     })
+
+    await notificationService.sendAppointmentCancelled(appointmentId)
 
     return createApiResponse(
       {

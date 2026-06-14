@@ -268,4 +268,11 @@ describe("POST /api/appointments/:id/reschedule", () => {
       })
     )
   })
+
+  it("envía notificación de reprogramación con la fecha anterior (oldStartsAt)", async () => {
+    const oldStartsAt = mockAppointment.startsAt
+    await POST(makeRequest({ magicLinkToken: rawToken, newStartAt: newStartAt.toISOString() }), ctx)
+
+    expect(mockSendAppointmentRescheduled).toHaveBeenCalledWith(appointmentId, oldStartsAt)
+  })
 })
