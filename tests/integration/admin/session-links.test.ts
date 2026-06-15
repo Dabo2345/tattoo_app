@@ -30,6 +30,12 @@ vi.mock("@/lib/env", () => ({
   },
 }))
 
+vi.mock("@/modules/notification/services/notification-service", () => ({
+  notificationService: {
+    sendSessionLink: vi.fn(),
+  },
+}))
+
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
 

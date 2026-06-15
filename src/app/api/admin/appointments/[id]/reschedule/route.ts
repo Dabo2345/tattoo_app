@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { withAdminAuth } from "@/lib/api/middleware"
 import { createApiResponse } from "@/lib/api/response"
-import { AppointmentNotFoundError, SlotNotAvailableError } from "@/lib/api/errors"
+import { AppointmentNotFoundError } from "@/lib/api/errors"
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
-import { prisma } from "@/lib/db/prisma"
+import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { auditService } from "@/modules/audit/services/audit-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
 
@@ -25,17 +25,9 @@ export const POST = withAdminAuth(
     const newStartDate = new Date(newStartAt)
     const newEndsAt = new Date(newStartDate.getTime() + durationMs)
 
-    // Conflict check — pending migration to calendarService.assertSlotAvailable (#055)
-    const conflict = await prisma.appointment.findFirst({
-      where: {
-        id: { not: id },
-        deletedAt: null,
-        status: { notIn: ["CANCELLED"] },
-        AND: [{ startsAt: { lt: newEndsAt } }, { endsAt: { gt: newStartDate } }],
-      },
-    })
-
-    if (conflict) throw new SlotNotAvailableError()
+    // Validar disponibilidad del slot (appointments, BlockedPeriods, breaks, working hours)
+    // Excluir la propia cita para permitir reprogramaciones con solapamiento parcial de horario
+    await calendarService.assertSlotAvailable(newStartDate, newEndsAt, id)
 
     await bookingRepository.rescheduleAppointment(id, newStartDate, newEndsAt)
 
