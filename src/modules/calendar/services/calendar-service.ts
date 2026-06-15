@@ -151,10 +151,14 @@ export const calendarService = {
    * Lanza SlotNotAvailableError si no está libre.
    * Usado por BookingService (#015) antes de crear una cita.
    */
-  async assertSlotAvailable(startAt: Date, endAt: Date): Promise<void> {
+  async assertSlotAvailable(
+    startAt: Date,
+    endAt: Date,
+    excludeAppointmentId?: string
+  ): Promise<void> {
     const [config, appointments, blockedPeriods] = await Promise.all([
       calendarRepository.getStudioConfig(),
-      calendarRepository.getActiveAppointmentsInRange(startAt, endAt),
+      calendarRepository.getActiveAppointmentsInRange(startAt, endAt, excludeAppointmentId),
       calendarRepository.getBlockedPeriodsInRange(startAt, endAt),
     ])
 

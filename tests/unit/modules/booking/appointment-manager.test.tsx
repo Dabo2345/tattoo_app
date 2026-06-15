@@ -8,6 +8,8 @@ import {
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
+const MAGIC_TOKEN = "test-magic-token-abc123"
+
 const confirmed: AppointmentData = {
   id: "apt-123",
   type: "CONSULTATION",
@@ -32,7 +34,7 @@ describe("AppointmentManager", () => {
   })
 
   it("renderiza los detalles de la cita confirmada", () => {
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
     expect(screen.getByText("Consulta")).toBeInTheDocument()
     expect(screen.getByText("Confirmada")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /reprogramar/i })).toBeInTheDocument()
@@ -40,7 +42,7 @@ describe("AppointmentManager", () => {
   })
 
   it("cita no confirmada no muestra botones de acción", () => {
-    render(<AppointmentManager appointment={cancelled} />)
+    render(<AppointmentManager appointment={cancelled} magicLinkToken={MAGIC_TOKEN} />)
     expect(screen.queryByRole("button", { name: /cancelar cita/i })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /reprogramar/i })).not.toBeInTheDocument()
     expect(screen.getByText(/no puede modificarse/i)).toBeInTheDocument()
@@ -49,7 +51,7 @@ describe("AppointmentManager", () => {
   // ── Cancel flow ────────────────────────────────────────────────────────────
 
   it("botón cancelar muestra confirmación inline", () => {
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
 
     fireEvent.click(screen.getByRole("button", { name: /cancelar cita/i }))
 
@@ -58,13 +60,13 @@ describe("AppointmentManager", () => {
     expect(screen.getByRole("button", { name: /confirmar cancelación/i })).toBeInTheDocument()
   })
 
-  it("confirmación de cancelación llama a POST /api/appointments/:id/cancel", async () => {
+  it("confirmación de cancelación envía magicLinkToken en el body", async () => {
     vi.mocked(global.fetch).mockResolvedValue({
       ok: true,
       json: async () => ({ success: true }),
     } as Response)
 
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
 
     fireEvent.click(screen.getByRole("button", { name: /cancelar cita/i }))
     fireEvent.click(screen.getByRole("button", { name: /confirmar cancelación/i }))
@@ -72,7 +74,11 @@ describe("AppointmentManager", () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         `/api/appointments/${confirmed.id}/cancel`,
-        expect.objectContaining({ method: "POST" })
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ magicLinkToken: MAGIC_TOKEN }),
+        })
       )
     })
 
@@ -85,7 +91,7 @@ describe("AppointmentManager", () => {
       json: async () => ({ success: false, error: { message: "No se puede cancelar" } }),
     } as Response)
 
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
 
     fireEvent.click(screen.getByRole("button", { name: /cancelar cita/i }))
     fireEvent.click(screen.getByRole("button", { name: /confirmar cancelación/i }))
@@ -96,7 +102,7 @@ describe("AppointmentManager", () => {
   })
 
   it("volver desde confirmación restaura vista de detalle", () => {
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
 
     fireEvent.click(screen.getByRole("button", { name: /cancelar cita/i }))
     expect(screen.getByText(/confirmas la cancelación/i)).toBeInTheDocument()
@@ -109,7 +115,7 @@ describe("AppointmentManager", () => {
   // ── Reschedule flow ────────────────────────────────────────────────────────
 
   it("botón reprogramar muestra selector de fecha", () => {
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
 
     fireEvent.click(screen.getByRole("button", { name: /reprogramar/i }))
 
@@ -127,7 +133,7 @@ describe("AppointmentManager", () => {
       json: async () => ({ data: slots }),
     } as Response)
 
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
 
     fireEvent.click(screen.getByRole("button", { name: /reprogramar/i }))
 
@@ -147,7 +153,7 @@ describe("AppointmentManager", () => {
     })
   })
 
-  it("con slot seleccionado llama a POST /api/appointments/:id/reschedule", async () => {
+  it("con slot seleccionado envía magicLinkToken y newStartAt a POST /api/appointments/:id/reschedule", async () => {
     const slots = [{ startsAt: "2026-07-20T09:00:00.000Z", endsAt: "2026-07-20T10:00:00.000Z" }]
 
     vi.mocked(global.fetch)
@@ -160,7 +166,7 @@ describe("AppointmentManager", () => {
         json: async () => ({ success: true }),
       } as Response)
 
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
 
     fireEvent.click(screen.getByRole("button", { name: /reprogramar/i }))
 
@@ -180,7 +186,7 @@ describe("AppointmentManager", () => {
         `/api/appointments/${confirmed.id}/reschedule`,
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ newStartAt: slots[0]!.startsAt }),
+          body: JSON.stringify({ magicLinkToken: MAGIC_TOKEN, newStartAt: slots[0]!.startsAt }),
         })
       )
     })
@@ -201,7 +207,7 @@ describe("AppointmentManager", () => {
         json: async () => ({ success: false, error: { message: "Slot no disponible" } }),
       } as Response)
 
-    render(<AppointmentManager appointment={confirmed} />)
+    render(<AppointmentManager appointment={confirmed} magicLinkToken={MAGIC_TOKEN} />)
 
     fireEvent.click(screen.getByRole("button", { name: /reprogramar/i }))
 

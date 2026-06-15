@@ -24,11 +24,9 @@ vi.mock("@/modules/booking/repositories/booking-repository", () => ({
   },
 }))
 
-vi.mock("@/lib/db/prisma", () => ({
-  prisma: {
-    appointment: {
-      findFirst: vi.fn(),
-    },
+vi.mock("@/modules/calendar/services/calendar-service", () => ({
+  calendarService: {
+    assertSlotAvailable: vi.fn(),
   },
 }))
 
@@ -45,13 +43,14 @@ vi.mock("@/modules/notification/services/notification-service", () => ({
 }))
 
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
-import { prisma } from "@/lib/db/prisma"
+import { calendarService } from "@/modules/calendar/services/calendar-service"
 import { auditService } from "@/modules/audit/services/audit-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
+import { SlotNotAvailableError } from "@/lib/api/errors"
 
 const mockFindAppointmentById = vi.mocked(bookingRepository.findAppointmentById)
 const mockRescheduleAppointment = vi.mocked(bookingRepository.rescheduleAppointment)
-const mockFindConflict = vi.mocked(prisma.appointment.findFirst)
+const mockAssertSlotAvailable = vi.mocked(calendarService.assertSlotAvailable)
 const mockAuditLog = vi.mocked(auditService.log)
 const mockSendRescheduled = vi.mocked(notificationService.sendAppointmentRescheduled)
 
@@ -87,14 +86,10 @@ const params = Promise.resolve({ id: "apt-1" })
 
 describe("POST /api/admin/appointments/[id]/reschedule", () => {
   beforeEach(() => {
-    // clearAllMocks preserves factory implementations (withAdminAuth wrapper)
-    // while resetting per-test return values and call history
     vi.clearAllMocks()
+    // Default: slot available
+    mockAssertSlotAvailable.mockResolvedValue(undefined)
   })
-
-  // Note: 401 auth rejection is tested in middleware.test.ts.
-  // withAdminAuth is evaluated at module import time in the new pattern,
-  // so per-request auth simulation is handled at the middleware layer.
 
   it("retorna 400 si newStartAt no es una fecha ISO válida", async () => {
     const res = await POST(makeRequest({ newStartAt: "not-a-date" }), { params })
@@ -111,9 +106,9 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
     expect(body.error.code).toBe("NOT_FOUND")
   })
 
-  it("retorna 409 si el nuevo slot está ocupado", async () => {
+  it("retorna 409 si el nuevo slot está ocupado (calendarService lanza SlotNotAvailableError)", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindConflict.mockResolvedValueOnce({ id: "apt-other" } as never)
+    mockAssertSlotAvailable.mockRejectedValueOnce(new SlotNotAvailableError())
 
     const res = await POST(makeRequest({ newStartAt: NEW_START }), { params })
     expect(res.status).toBe(409)
@@ -123,7 +118,6 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
 
   it("retorna 200 y actualiza la cita en caso exitoso", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindConflict.mockResolvedValueOnce(null) // no conflict
 
     const res = await POST(makeRequest({ newStartAt: NEW_START }), { params })
     expect(res.status).toBe(200)
@@ -134,7 +128,6 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
 
   it("calcula newEndsAt preservando la duración original (90 min)", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindConflict.mockResolvedValueOnce(null)
 
     const res = await POST(makeRequest({ newStartAt: NEW_START }), { params })
     const body = await res.json()
@@ -143,9 +136,21 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
     expect(body.data.appointment.endsAt).toBe(expectedEnd)
   })
 
+  it("llama a assertSlotAvailable excluyendo la propia cita (excludeAppointmentId)", async () => {
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
+
+    await POST(makeRequest({ newStartAt: NEW_START }), { params })
+
+    const expectedEnd = new Date(new Date(NEW_START).getTime() + 90 * 60 * 1000)
+    expect(mockAssertSlotAvailable).toHaveBeenCalledWith(
+      new Date(NEW_START),
+      expectedEnd,
+      "apt-1" // excludeAppointmentId
+    )
+  })
+
   it("crea un AuditLog con APPOINTMENT_RESCHEDULED y metadata de fechas", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindConflict.mockResolvedValueOnce(null)
 
     await POST(makeRequest({ newStartAt: NEW_START }), { params })
 
@@ -163,24 +168,8 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
     )
   })
 
-  it("no cuenta la propia cita como conflicto (query excluye el id actual)", async () => {
-    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindConflict.mockResolvedValueOnce(null)
-
-    await POST(makeRequest({ newStartAt: NEW_START }), { params })
-
-    expect(mockFindConflict).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: { not: "apt-1" },
-        }),
-      })
-    )
-  })
-
   it("envía notificación de reprogramación con la fecha original", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindConflict.mockResolvedValueOnce(null)
 
     await POST(makeRequest({ newStartAt: NEW_START }), { params })
 
@@ -189,7 +178,6 @@ describe("POST /api/admin/appointments/[id]/reschedule", () => {
 
   it("llama a rescheduleAppointment con las fechas calculadas correctamente", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
-    mockFindConflict.mockResolvedValueOnce(null)
 
     await POST(makeRequest({ newStartAt: NEW_START }), { params })
 

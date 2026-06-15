@@ -198,10 +198,13 @@ function DetailPanel({
     setActionLoading(true)
     setActionError(null)
     try {
+      // datetime-local returns local-time strings without timezone info.
+      // The system operates in UTC, so we interpret the value as UTC directly.
+      const suffix = newStartAt.length === 16 ? ":00.000Z" : ".000Z"
       const res = await fetch(`/api/admin/appointments/${appointment.id}/reschedule`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newStartAt: new Date(newStartAt).toISOString() }),
+        body: JSON.stringify({ newStartAt: newStartAt + suffix }),
       })
       const body = await res.json()
       if (!res.ok || !body.success) {

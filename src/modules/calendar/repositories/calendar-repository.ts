@@ -18,13 +18,18 @@ export const calendarRepository = {
    * Citas activas (PENDING_PAYMENT o CONFIRMED) que se solapan con el rango.
    * CANCELLED, COMPLETED y NO_SHOW no bloquean disponibilidad.
    */
-  async getActiveAppointmentsInRange(from: Date, to: Date): Promise<OccupiedPeriod[]> {
+  async getActiveAppointmentsInRange(
+    from: Date,
+    to: Date,
+    excludeId?: string
+  ): Promise<OccupiedPeriod[]> {
     return prisma.appointment.findMany({
       where: {
         deletedAt: null,
         status: { in: ["PENDING_PAYMENT", "CONFIRMED"] },
         startsAt: { lt: to },
         endsAt: { gt: from },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
       },
       select: { startsAt: true, endsAt: true },
     })

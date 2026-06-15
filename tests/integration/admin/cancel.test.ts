@@ -24,6 +24,18 @@ vi.mock("@/modules/booking/repositories/booking-repository", () => ({
   },
 }))
 
+vi.mock("@/modules/payment/services/deposit-policy", () => ({
+  depositPolicyService: {
+    handleCancellation: vi.fn(),
+  },
+}))
+
+vi.mock("@/modules/payment/repositories/payment-repository", () => ({
+  paymentRepository: {
+    findByAppointmentId: vi.fn(),
+  },
+}))
+
 vi.mock("@/modules/audit/services/audit-service", () => ({
   auditService: {
     log: vi.fn(),
@@ -37,11 +49,15 @@ vi.mock("@/modules/notification/services/notification-service", () => ({
 }))
 
 import { bookingRepository } from "@/modules/booking/repositories/booking-repository"
+import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
+import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
 import { auditService } from "@/modules/audit/services/audit-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
 
 const mockFindAppointmentById = vi.mocked(bookingRepository.findAppointmentById)
 const mockCancelAppointment = vi.mocked(bookingRepository.cancelAppointment)
+const mockHandleCancellation = vi.mocked(depositPolicyService.handleCancellation)
+const mockFindPayment = vi.mocked(paymentRepository.findByAppointmentId)
 const mockAuditLog = vi.mocked(auditService.log)
 const mockSendCancelled = vi.mocked(notificationService.sendAppointmentCancelled)
 
@@ -71,14 +87,11 @@ const params = Promise.resolve({ id: "apt-1" })
 
 describe("POST /api/admin/appointments/[id]/cancel", () => {
   beforeEach(() => {
-    // clearAllMocks preserves factory implementations (withAdminAuth wrapper)
-    // while resetting per-test return values and call history
     vi.clearAllMocks()
+    // Default: refund eligible (≥4 days)
+    mockHandleCancellation.mockResolvedValue({ refunded: true, stripeRefundId: "re_abc123" })
+    mockFindPayment.mockResolvedValue({ amount: 50 } as never)
   })
-
-  // Note: 401 auth rejection is tested in middleware.test.ts.
-  // withAdminAuth is evaluated at module import time in the new pattern,
-  // so per-request auth simulation is handled at the middleware layer.
 
   it("retorna 404 si la cita no existe", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(null)
@@ -112,23 +125,35 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
     expect(body.error.code).toBe("ALREADY_CANCELLED")
   })
 
-  it("retorna 200 con refundEligible=true cuando la cita es en 7 días", async () => {
+  it("retorna 200 con refunded=true y refundAmount cuando procede el reembolso", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
     const res = await POST(makeRequest(), { params })
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.success).toBe(true)
-    expect(body.data.refundEligible).toBe(true)
+    expect(body.data.refunded).toBe(true)
+    expect(body.data.refundAmount).toBe(50)
     expect(body.data.appointment.status).toBe("CANCELLED")
   })
 
-  it("retorna 200 con refundEligible=false cuando la cita es en menos de 4 días", async () => {
-    const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 days from now
-    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment({ startsAt: soon }) as never)
+  it("retorna 200 con refunded=false cuando no procede el reembolso", async () => {
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
+    mockHandleCancellation.mockResolvedValueOnce({ refunded: false, reason: "too_late" })
+
     const res = await POST(makeRequest(), { params })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data.refundEligible).toBe(false)
+    expect(body.data.refunded).toBe(false)
+    expect(body.data.refundAmount).toBe(0)
+  })
+
+  it("llama a depositPolicyService.handleCancellation con el id y startsAt de la cita", async () => {
+    const appointment = makeAppointment()
+    mockFindAppointmentById.mockResolvedValueOnce(appointment as never)
+
+    await POST(makeRequest(), { params })
+
+    expect(mockHandleCancellation).toHaveBeenCalledWith("apt-1", appointment.startsAt)
   })
 
   it("cancela el appointment en el repositorio", async () => {
@@ -137,7 +162,7 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
     expect(mockCancelAppointment).toHaveBeenCalledWith("apt-1")
   })
 
-  it("crea un AuditLog con la acción APPOINTMENT_CANCELLED", async () => {
+  it("crea un AuditLog con la acción APPOINTMENT_CANCELLED y stripeRefundId cuando hay reembolso", async () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
     await POST(makeRequest(), { params })
     expect(mockAuditLog).toHaveBeenCalledWith(
@@ -146,6 +171,24 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
       expect.objectContaining({
         entityType: "Appointment",
         adminUserId: "admin-1",
+        metadata: expect.objectContaining({
+          refunded: true,
+          stripeRefundId: "re_abc123",
+        }),
+      })
+    )
+  })
+
+  it("crea AuditLog sin stripeRefundId cuando no hay reembolso", async () => {
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
+    mockHandleCancellation.mockResolvedValueOnce({ refunded: false, reason: "too_late" })
+
+    await POST(makeRequest(), { params })
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      "APPOINTMENT_CANCELLED",
+      "apt-1",
+      expect.objectContaining({
+        metadata: expect.not.objectContaining({ stripeRefundId: expect.anything() }),
       })
     )
   })

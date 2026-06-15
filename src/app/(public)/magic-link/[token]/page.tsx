@@ -91,7 +91,7 @@ export default async function MagicLinkPage({ params }: Props) {
     <section className="max-w-xl mx-auto px-6 py-16 md:py-24">
       {!result.ok && result.expired && <ExpiredView />}
       {!result.ok && !result.expired && <ErrorView />}
-      {result.ok && <AppointmentManager appointment={result.appointment} />}
+      {result.ok && <AppointmentManager appointment={result.appointment} magicLinkToken={token} />}
     </section>
   )
 }

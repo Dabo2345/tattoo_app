@@ -106,7 +106,13 @@ function AppointmentCard({ appointment }: { appointment: AppointmentData }) {
 
 // ─── AppointmentManager ───────────────────────────────────────────────────────
 
-export function AppointmentManager({ appointment }: { appointment: AppointmentData }) {
+export function AppointmentManager({
+  appointment,
+  magicLinkToken,
+}: {
+  appointment: AppointmentData
+  magicLinkToken: string
+}) {
   const [view, setView] = useState<ManagerView>("detail")
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -145,7 +151,11 @@ export function AppointmentManager({ appointment }: { appointment: AppointmentDa
     setLoading(true)
     setErrorMsg("")
     try {
-      const res = await fetch(`/api/appointments/${appointment.id}/cancel`, { method: "POST" })
+      const res = await fetch(`/api/appointments/${appointment.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ magicLinkToken }),
+      })
       const body = await res.json()
       if (!res.ok || !body.success) throw new Error(body.error?.message ?? "Error al cancelar")
       setView("cancel-success")
@@ -167,7 +177,7 @@ export function AppointmentManager({ appointment }: { appointment: AppointmentDa
       const res = await fetch(`/api/appointments/${appointment.id}/reschedule`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newStartAt: selectedSlot.startsAt }),
+        body: JSON.stringify({ magicLinkToken, newStartAt: selectedSlot.startsAt }),
       })
       const body = await res.json()
       if (!res.ok || !body.success) throw new Error(body.error?.message ?? "Error al reprogramar")
