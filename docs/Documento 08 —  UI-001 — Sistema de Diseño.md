@@ -719,7 +719,50 @@ Todo deberá utilizar tokens definidos en este documento.
 
 ---
 
-# 30. Principio Rector
+# 30. Componentes Admin — Plan de Tatuaje
+
+## TattooPlanForm
+
+Formulario para que el artista cree el plan de tatuaje de una consulta confirmada.
+
+Ubicación: `src/modules/booking/components/tattoo-plan-form.tsx`
+
+Campos:
+- **Estilo** (select): Blackwork, Japanese, Watercolor, Traditional, Neo-Traditional, Realism, Geometric, Fineline, Otro
+- **Tamaño** (select): Pequeño (<5 cm), Mediano (5–15 cm), Grande (15–30 cm), Extra grande (>30 cm)
+- **Placement** (input texto): localización en el cuerpo
+- **Descripción** (textarea, mín. 20 chars): descripción del diseño acordado
+- **Notas del artista** (textarea, opcional): instrucciones especiales para el cliente
+- **Sesiones** (lista dinámica): mínimo 1, máximo 10. Cada sesión tiene selector de duración (60–600 min en múltiplos de 30). Botón "Añadir sesión" y botón de eliminación (solo visible si hay más de una).
+
+Estados:
+- Guardar: botón deshabilitado + texto "Guardando…" durante la petición
+- Error: mensaje inline bajo el formulario, botón vuelve a habilitarse
+
+---
+
+## TattooPlanStatus
+
+Vista de solo lectura del plan de tatuaje. Muestra las características y el estado de cada sesión.
+
+Ubicación: `src/modules/booking/components/tattoo-plan-status.tsx`
+
+Contenido:
+- Encabezado con el estado del plan (badge de color: DRAFT / SENT / IN_PROGRESS / COMPLETED)
+- Grid de características: estilo, tamaño, placement, descripción, notas
+- Lista de sesiones con: número, duración, badge de estado (PENDING / LINK_SENT / BOOKED / COMPLETED)
+- Si status = DRAFT: botón "Enviar al cliente" → actualiza la UI a SENT de forma optimista tras la petición
+- Si status ≠ DRAFT: solo lectura, sin botón de envío
+
+Colores de badge por estado de sesión:
+- PENDING: muted
+- LINK_SENT: amber
+- BOOKED: blue
+- COMPLETED: green
+
+---
+
+# 31. Principio Rector
 
 Las fotografías del portfolio son las protagonistas.
 

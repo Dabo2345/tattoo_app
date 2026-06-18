@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, X, CalendarDays, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { TattooPlanForm } from "@/modules/booking/components/tattoo-plan-form"
+import { TattooPlanStatus } from "@/modules/booking/components/tattoo-plan-status"
+import type { TattooPlanWithSessions } from "@/modules/booking/types/tattoo-plan"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -152,6 +155,8 @@ type PanelView =
   | "reschedule-confirm"
   | "session-link-form"
   | "session-link-result"
+  | "tattoo-plan-form"
+  | "tattoo-plan-status"
 
 function DetailPanel({
   appointment,
@@ -170,10 +175,33 @@ function DetailPanel({
   const [copied, setCopied] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [tattooPlan, setTattooPlan] = useState<TattooPlanWithSessions | null>(null)
+  const [planLoading, setPlanLoading] = useState(false)
 
   const isActionable = ACTIONABLE_STATUSES.includes(appointment.status)
   const canGenerateSessionLink =
     appointment.type === "CONSULTATION" && SESSION_LINK_STATUSES.includes(appointment.status)
+  const canViewPlan = appointment.type === "CONSULTATION" && appointment.status === "CONFIRMED"
+
+  async function loadTattooPlan() {
+    setPlanLoading(true)
+    try {
+      const res = await fetch(`/api/admin/appointments/${appointment.id}/tattoo-plan`)
+      const body = await res.json()
+      if (res.status === 404 || !body.success) {
+        setTattooPlan(null)
+        setView("tattoo-plan-form")
+      } else {
+        setTattooPlan(body.data)
+        setView("tattoo-plan-status")
+      }
+    } catch {
+      setTattooPlan(null)
+      setView("tattoo-plan-form")
+    } finally {
+      setPlanLoading(false)
+    }
+  }
 
   async function handleCancel() {
     setActionLoading(true)
@@ -305,7 +333,7 @@ function DetailPanel({
             </div>
           </div>
 
-          {(isActionable || canGenerateSessionLink) && (
+          {(isActionable || canGenerateSessionLink || canViewPlan) && (
             <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
               {isActionable && (
                 <>
@@ -325,6 +353,17 @@ function DetailPanel({
               {canGenerateSessionLink && (
                 <Button variant="outline" size="sm" onClick={() => setView("session-link-form")}>
                   Generar SessionLink
+                </Button>
+              )}
+              {canViewPlan && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadTattooPlan}
+                  disabled={planLoading}
+                  aria-label="Ver o crear plan de tatuaje"
+                >
+                  {planLoading ? "Cargando…" : "Plan de tatuaje"}
                 </Button>
               )}
             </div>
@@ -560,6 +599,32 @@ function DetailPanel({
           <Button variant="outline" size="sm" onClick={() => setView("detail")}>
             Volver al detalle
           </Button>
+        </div>
+      )}
+
+      {/* ── Tattoo plan form ─────────────────────────────────────── */}
+      {view === "tattoo-plan-form" && (
+        <div>
+          <TattooPlanForm
+            appointmentId={appointment.id}
+            onSuccess={(plan) => {
+              setTattooPlan(plan as TattooPlanWithSessions)
+              setView("tattoo-plan-status")
+            }}
+            onCancel={() => setView("detail")}
+          />
+        </div>
+      )}
+
+      {/* ── Tattoo plan status ───────────────────────────────────── */}
+      {view === "tattoo-plan-status" && tattooPlan && (
+        <div>
+          <TattooPlanStatus plan={tattooPlan} />
+          <div className="mt-4 pt-4 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setView("detail")}>
+              Volver al detalle
+            </Button>
+          </div>
         </div>
       )}
     </div>

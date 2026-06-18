@@ -366,7 +366,69 @@ Reprogramar
 
 ---
 
-# 13. Gestión Galería
+# 13. Crear Plan de Tatuaje (Admin)
+
+Disponible en el detalle de una cita de tipo CONSULTATION en estado CONFIRMED.
+
+## Flujo sin plan previo
+
+Artist
+
+↓
+
+Selecciona cita CONSULTATION + CONFIRMED en el calendario semanal
+
+↓
+
+Hace click en "Plan de tatuaje"
+
+↓
+
+Se carga el plan desde `/api/admin/appointments/:id/tattoo-plan`
+
+↓
+
+Si no existe plan (404): muestra `TattooPlanForm`
+
+↓
+
+Rellena: estilo, tamaño, placement, descripción, notas (opcional), sesiones (mín. 1, máx. 10)
+
+↓
+
+Click "Guardar plan" → `POST /api/admin/appointments/:id/tattoo-plan`
+
+↓
+
+Si éxito: se muestra `TattooPlanStatus` con el plan en estado DRAFT
+
+↓
+
+Click "Enviar al cliente" → `POST /api/admin/tattoo-plans/:planId/send`
+
+↓
+
+El plan pasa a SENT. Cada sesión genera un SessionLink. Se dispara email al cliente (stub hasta #073).
+
+---
+
+## Flujo con plan existente
+
+Si ya existe un plan al hacer click en "Plan de tatuaje":
+
+- Si DRAFT → muestra `TattooPlanStatus` con botón "Enviar al cliente"
+- Si SENT / IN_PROGRESS / COMPLETED → muestra `TattooPlanStatus` en solo lectura
+
+---
+
+## Reglas de visibilidad
+
+- El botón "Plan de tatuaje" solo aparece para citas CONSULTATION + CONFIRMED
+- Un plan SENT no puede editarse desde la UI (solo lectura)
+
+---
+
+# 14. Gestión Galería
 
 Artist
 
