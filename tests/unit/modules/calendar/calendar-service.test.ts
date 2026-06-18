@@ -5,6 +5,7 @@ import {
   isOccupied,
   generateDaySlots,
   breaksToOccupiedPeriods,
+  filterStartSlotsByDuration,
   calendarService,
   DEFAULT_CALENDAR_CONFIG,
 } from "@/modules/calendar/services/calendar-service"
@@ -436,5 +437,135 @@ describe("calendarService.assertSlotAvailable", () => {
     await expect(calendarService.assertSlotAvailable(start, end)).rejects.toThrow(
       "El horario seleccionado ya no está disponible"
     )
+  })
+})
+
+// ─── filterStartSlotsByDuration ───────────────────────────────────────────────
+
+describe("filterStartSlotsByDuration", () => {
+  /**
+   * Helper: genera slots de 30 min para el tramo [fromHour, toHour).
+   * Incluye el slot de inicio en fromHour:00 hasta el slot en (toHour-0.5)*60 min.
+   * Ejemplo: fromHour=10, toHour=18 → 10:00..17:30 = 16 slots (el slot 17:30 ends at 18:00)
+   */
+  function makeBase30Slots(
+    dateStr: string,
+    fromHour: number,
+    toHour: number
+  ): Array<{ startsAt: Date; endsAt: Date }> {
+    const slots = []
+    for (let h = fromHour; h < toHour; h++) {
+      for (const m of [0, 30]) {
+        const startsAt = new Date(
+          `${dateStr}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00.000Z`
+        )
+        const endsAt = new Date(startsAt.getTime() + 30 * 60 * 1000)
+        slots.push({ startsAt, endsAt })
+      }
+    }
+    return slots
+  }
+
+  it("devuelve solo los slots de inicio donde caben N horas consecutivas", () => {
+    // 10:00–18:00 libres: slots 10:00..17:30 (16 slots). Pedimos 5h (10 slots).
+    // Último inicio válido: 13:00 (13:00 + 5h = 18:00 — el slot 17:30 sí existe)
+    const base = makeBase30Slots("2026-08-01", 10, 18)
+    const result = filterStartSlotsByDuration(base, 300)
+    expect(result.length).toBeGreaterThan(0)
+    expect(result[0].startsAt.toISOString()).toBe("2026-08-01T10:00:00.000Z")
+    const last = result[result.length - 1]
+    expect(last.startsAt.toISOString()).toBe("2026-08-01T13:00:00.000Z")
+    expect(last.endsAt.toISOString()).toBe("2026-08-01T18:00:00.000Z")
+  })
+
+  it("devuelve 0 slots si hay un hueco que impide cubrir la duración", () => {
+    // 10:00–13:00 libres (6 slots), hueco en 13:00, 13:30–17:30 libres (8 slots)
+    // Pedimos 5h (10 slots) — ningún tramo de 10 consecutivos existe
+    const morning = makeBase30Slots("2026-08-01", 10, 13) // 10:00..12:30 = 6 slots
+    const afternoon = makeBase30Slots("2026-08-01", 14, 18) // 14:00..17:30 = 8 slots
+    const result = filterStartSlotsByDuration([...morning, ...afternoon], 300)
+    expect(result).toHaveLength(0)
+  })
+
+  it("durationMinutes=30 devuelve todos los slots base (equivalente al comportamiento sin filtro)", () => {
+    const base = makeBase30Slots("2026-08-01", 10, 14)
+    const result = filterStartSlotsByDuration(base, 30)
+    expect(result).toHaveLength(base.length)
+  })
+
+  it("endsAt del resultado es startsAt + durationMinutes", () => {
+    const base = makeBase30Slots("2026-08-01", 10, 18)
+    const result = filterStartSlotsByDuration(base, 120) // 2h
+    for (const slot of result) {
+      const expectedEnd = new Date(slot.startsAt.getTime() + 120 * 60 * 1000)
+      expect(slot.endsAt.getTime()).toBe(expectedEnd.getTime())
+    }
+  })
+
+  it("devuelve array vacío si no hay slots base", () => {
+    const result = filterStartSlotsByDuration([], 300)
+    expect(result).toHaveLength(0)
+  })
+})
+
+// ─── getAvailableSlots con durationMinutes ────────────────────────────────────
+
+describe("calendarService.getAvailableSlots con durationMinutes", () => {
+  // Use dates within MAX_DAYS_AHEAD (60 days) so they pass the range check
+  const futureDay = new Date()
+  futureDay.setUTCDate(futureDay.getUTCDate() + 10)
+  const futureDayStr = futureDay.toISOString().slice(0, 10)
+  const from = new Date(`${futureDayStr}T00:00:00.000Z`)
+  const to = new Date(`${futureDayStr}T23:59:59.999Z`)
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetAppointments.mockResolvedValue([])
+    mockGetBlocked.mockResolvedValue([])
+    mockGetConfig.mockResolvedValue({
+      workingStartHour: 10,
+      workingStartMinute: 0,
+      workingEndHour: 20,
+      workingEndMinute: 0,
+      slotDurationMinutes: 30,
+      consultationDurationMinutes: 60,
+      breaks: [],
+    })
+  })
+
+  it("sin durationMinutes devuelve slots de consultationDurationMinutes (no regresión)", async () => {
+    const slots = await calendarService.getAvailableSlots(from, to)
+    expect(slots.length).toBeGreaterThan(0)
+    // Duración de cada slot debe ser 60 min (consultationDurationMinutes)
+    const duration = slots[0].endsAt.getTime() - slots[0].startsAt.getTime()
+    expect(duration).toBe(60 * 60 * 1000)
+  })
+
+  it("con durationMinutes=300 devuelve solo slots donde caben 5h consecutivas", async () => {
+    const slots = await calendarService.getAvailableSlots(from, to, 300)
+    expect(slots.length).toBeGreaterThan(0)
+    // Duración de cada slot devuelto debe ser 300 min
+    const duration = slots[0].endsAt.getTime() - slots[0].startsAt.getTime()
+    expect(duration).toBe(300 * 60 * 1000)
+    // El último inicio no debe superar las 15:00 (20:00 - 5h)
+    const last = slots[slots.length - 1]
+    expect(last.startsAt.getUTCHours()).toBeLessThanOrEqual(15)
+  })
+
+  it("con BlockedPeriod en medio, los slots de inicio que lo incluyen son inválidos", async () => {
+    // Bloqueo de 13:00 a 13:30 — rompe la cadena para cualquier inicio que lo atraviese
+    mockGetBlocked.mockResolvedValue([
+      {
+        startsAt: new Date(`${futureDayStr}T13:00:00.000Z`),
+        endsAt: new Date(`${futureDayStr}T13:30:00.000Z`),
+      },
+    ])
+    const slots = await calendarService.getAvailableSlots(from, to, 300)
+    const blockStart = new Date(`${futureDayStr}T13:00:00.000Z`)
+    const blockEnd = new Date(`${futureDayStr}T13:30:00.000Z`)
+    for (const slot of slots) {
+      const crossesBlock = slot.startsAt < blockEnd && slot.endsAt > blockStart
+      expect(crossesBlock).toBe(false)
+    }
   })
 })

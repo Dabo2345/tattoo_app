@@ -55,7 +55,7 @@ describe("GET /api/availability", () => {
     expect(body.data[0].startsAt).toBe(slot.startsAt.toISOString())
   })
 
-  it("llama a calendarService con las fechas correctas", async () => {
+  it("llama a calendarService con las fechas correctas y durationMinutes undefined", async () => {
     const req = makeRequest({
       from: "2026-07-01T00:00:00Z",
       to: "2026-07-08T00:00:00Z",
@@ -63,7 +63,8 @@ describe("GET /api/availability", () => {
     await GET(req, ctx)
     expect(mockGetSlots).toHaveBeenCalledWith(
       new Date("2026-07-01T00:00:00Z"),
-      new Date("2026-07-08T00:00:00Z")
+      new Date("2026-07-08T00:00:00Z"),
+      undefined
     )
   })
 
@@ -105,5 +106,65 @@ describe("GET /api/availability", () => {
     const body = await res.json()
     expect(body.success).toBe(false)
     expect(body.error.code).toBe("VALIDATION_ERROR")
+  })
+
+  // ─── durationMinutes ───────────────────────────────────────────────────────
+
+  it("pasa durationMinutes=120 al servicio como número", async () => {
+    const req = makeRequest({
+      from: "2026-07-01T00:00:00Z",
+      to: "2026-07-08T00:00:00Z",
+      durationMinutes: "120",
+    })
+    await GET(req, ctx)
+    expect(mockGetSlots).toHaveBeenCalledWith(
+      new Date("2026-07-01T00:00:00Z"),
+      new Date("2026-07-08T00:00:00Z"),
+      120
+    )
+  })
+
+  it("devuelve 400 si durationMinutes no es múltiplo de 30 (RB-AV-002)", async () => {
+    const req = makeRequest({
+      from: "2026-07-01T00:00:00Z",
+      to: "2026-07-08T00:00:00Z",
+      durationMinutes: "123",
+    })
+    const res = await GET(req, ctx)
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error.code).toBe("VALIDATION_ERROR")
+  })
+
+  it("devuelve 400 si durationMinutes=0 (RB-AV-002)", async () => {
+    const req = makeRequest({
+      from: "2026-07-01T00:00:00Z",
+      to: "2026-07-08T00:00:00Z",
+      durationMinutes: "0",
+    })
+    const res = await GET(req, ctx)
+    expect(res.status).toBe(400)
+  })
+
+  it("devuelve 400 si durationMinutes=601 (supera el máximo)", async () => {
+    const req = makeRequest({
+      from: "2026-07-01T00:00:00Z",
+      to: "2026-07-08T00:00:00Z",
+      durationMinutes: "601",
+    })
+    const res = await GET(req, ctx)
+    expect(res.status).toBe(400)
+  })
+
+  it("acepta type=tattoo_session con durationMinutes (no regresión)", async () => {
+    const req = makeRequest({
+      from: "2026-07-01T00:00:00Z",
+      to: "2026-07-08T00:00:00Z",
+      type: "tattoo_session",
+      durationMinutes: "300",
+    })
+    const res = await GET(req, ctx)
+    expect(res.status).toBe(200)
+    expect(mockGetSlots).toHaveBeenCalledWith(expect.any(Date), expect.any(Date), 300)
   })
 })
