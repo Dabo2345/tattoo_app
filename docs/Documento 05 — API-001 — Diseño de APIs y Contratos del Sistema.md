@@ -101,26 +101,26 @@ GET
 
 /api/availability
 
-Query
+Query params:
 
-from
+| Param | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `from` | ISO 8601 UTC | Sí | Inicio del rango |
+| `to` | ISO 8601 UTC | Sí | Fin del rango |
+| `type` | `consultation` \| `tattoo_session` | No (default: `consultation`) | Tipo de cita |
+| `durationMinutes` | entero, múltiplo de 30, 30–600 | No | Si presente, filtra por slots consecutivos suficientes para la duración (RB-AV-001) |
 
-to
+Validación `durationMinutes`:
+- Debe ser entero múltiplo de 30 → 400 si no (RB-AV-002)
+- Mínimo 30, máximo 600 → 400 si fuera de rango
 
-type
+Respuesta 200: array de slots válidos. Con `durationMinutes` cada slot tiene `endsAt = startsAt + durationMinutes`.
 
----
+```json
+[{ "startsAt": "...", "endsAt": "..." }]
+```
 
-Respuesta
-
-200
-
-[
-{
-startsAt,
-endsAt
-}
-]
+Sin `durationMinutes`: comportamiento original (slots de consultationDurationMinutes).
 
 ---
 

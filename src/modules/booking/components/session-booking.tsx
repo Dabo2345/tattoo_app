@@ -99,6 +99,7 @@ export function SessionBooking({ token, data }: { token: string; data: SessionLi
       from: from.toISOString(),
       to: to.toISOString(),
       type: "tattoo_session",
+      durationMinutes: String(data.durationMinutes),
     })
 
     fetch(`/api/availability?${params.toString()}`)
