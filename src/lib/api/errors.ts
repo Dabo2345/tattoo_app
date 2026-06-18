@@ -96,6 +96,36 @@ export class RescheduleNotAllowedError extends DomainError {
   }
 }
 
+// ─── Errores de TattooPlan ────────────────────────────────────────────────────
+
+export class TattooPlanNotFoundError extends DomainError {
+  constructor() {
+    super("NOT_FOUND", "El plan de tatuaje no existe", 404)
+    this.name = "TattooPlanNotFoundError"
+  }
+}
+
+export class TattooPlanAlreadyExistsError extends DomainError {
+  constructor() {
+    super("ALREADY_EXISTS", "Ya existe un plan para esta consulta", 409)
+    this.name = "TattooPlanAlreadyExistsError"
+  }
+}
+
+export class TattooPlanInvalidStatusError extends DomainError {
+  constructor(message = "El plan no se puede modificar en su estado actual") {
+    super("INVALID_STATUS", message, 422)
+    this.name = "TattooPlanInvalidStatusError"
+  }
+}
+
+export class AppointmentInvalidForPlanError extends DomainError {
+  constructor(message = "La cita debe ser de tipo CONSULTATION y estar CONFIRMED") {
+    super("INVALID_STATUS", message, 422)
+    this.name = "AppointmentInvalidForPlanError"
+  }
+}
+
 // ─── Error interno genérico ───────────────────────────────────────────────────
 
 export class InternalError extends DomainError {

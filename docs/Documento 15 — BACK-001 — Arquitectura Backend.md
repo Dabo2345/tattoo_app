@@ -223,6 +223,7 @@ export async function someAction(data: unknown) {
 ```
 /src/modules/[modulo]/services/
 ├── booking-service.ts
+├── tattoo-plan-service.ts
 ├── availability-service.ts
 ├── payment-service.ts
 ├── notification-service.ts
@@ -329,7 +330,7 @@ Cada módulo en `/src/modules/` tiene esta estructura interna:
 
 | Módulo | Responsabilidad |
 |--------|----------------|
-| `booking` | Consultations, TattooSessions, MagicLinks, SessionLinks, cancelaciones, reprogramaciones |
+| `booking` | Consultations, TattooSessions, MagicLinks, SessionLinks, TattooPlans, cancelaciones, reprogramaciones |
 | `calendar` | Slots, disponibilidad, descansos, BlockedPeriods |
 | `payment` | Stripe checkout, webhooks, reembolsos |
 | `notification` | Envío de emails via Resend, plantillas, triggers |
@@ -621,3 +622,50 @@ Nunca se usan `any` tipos en el backend. TypeScript strict en todo momento.
 ## BA-006
 
 Los errores de módulo son clases o tipos específicos, no strings genéricos.
+
+---
+
+# TattooPlanService — flujo de plan de tatuaje (#070)
+
+## Crear plan (POST /api/admin/appointments/:id/tattoo-plan)
+
+```
+Admin solicita crear plan
+  ↓
+bookingRepository.findAppointmentById → verificar CONSULTATION + CONFIRMED (RB-TP-001)
+  ↓
+tattooPlanRepository.findByAppointmentId → verificar que no existe plan (RB-TP-002)
+  ↓
+tattooPlanRepository.create → crea TattooPlan (DRAFT) + TattooPlanSession[] en transacción
+  ↓
+Devuelve plan con sesiones
+```
+
+## Enviar plan al cliente (POST /api/admin/tattoo-plans/:planId/send)
+
+```
+Admin solicita envío
+  ↓
+tattooPlanRepository.findById → verificar plan existe y está en DRAFT (RB-TP-003)
+  ↓
+Por cada TattooPlanSession:
+  bookingRepository.createSessionLink (expira 30 días — RB-TP-004)
+  tattooPlanRepository.updateSessionLinkId → vincula SessionLink a sesión
+  ↓
+tattooPlanRepository.updatePlanStatus → SENT (RB-TP-005)
+  ↓
+auditService.log("TATTOO_PLAN_SENT")
+  ↓
+notificationService.sendTattooPlan (stub — implementación real en #073)
+```
+
+## Archivos
+
+| Archivo | Propósito |
+|---------|-----------|
+| `src/modules/booking/services/tattoo-plan-service.ts` | Lógica de negocio |
+| `src/modules/booking/repositories/tattoo-plan-repository.ts` | Acceso a datos |
+| `src/modules/booking/schemas/tattoo-plan-schema.ts` | Validación Zod |
+| `src/modules/booking/types/tattoo-plan.ts` | Tipos TypeScript |
+| `src/app/api/admin/appointments/[id]/tattoo-plan/route.ts` | GET + POST |
+| `src/app/api/admin/tattoo-plans/[planId]/send/route.ts` | POST envío |
