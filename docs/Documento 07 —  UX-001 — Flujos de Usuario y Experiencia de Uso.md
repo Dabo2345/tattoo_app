@@ -104,67 +104,28 @@ Introduce datos
 
 ↓
 
-Stripe Checkout
+Reserva confirmada (sin pago — RB-NEW-001)
 
 ↓
 
-Pago exitoso
+Pantalla de confirmación en la misma página
 
 ↓
 
-Consulta confirmada
+Email confirmación enviado inmediatamente
 
 ↓
 
-Email confirmación
-
-↓
-
-MagicLink enviado
+MagicLink enviado con el email
 
 ---
 
 # 5. Flujo de Pago Fallido
 
-Visitor
+~~Eliminado. Las consultas ya no requieren pago (RB-NEW-001, issue #067).~~
 
-↓
-
-Stripe
-
-↓
-
-Pago cancelado o fallido
-
-↓
-
-Appointment
-
-PENDING_PAYMENT
-
-↓
-
-15 minutos
-
-↓
-
-EXPIRED
-
-↓
-
-Slot liberado
-
----
-
-Pantalla mostrada
-
-"No se ha podido completar el pago."
-
-Botones:
-
-Intentar nuevamente
-
-Volver al calendario
+El wizard muestra un mensaje de error inline si la API falla (slot ocupado, error de red, etc.).
+El cliente puede reintentar sin salir de la página.
 
 ---
 
