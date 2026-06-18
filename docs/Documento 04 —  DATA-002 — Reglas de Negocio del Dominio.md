@@ -18,13 +18,31 @@ Un cliente no necesita crear cuenta.
 
 # RB-002
 
-Toda Consultation requiere depósito previo.
+~~Toda Consultation requiere depósito previo.~~ — **DEPRECADA** (#067)
 
 ---
 
 # RB-003
 
-Ninguna Consultation se confirma sin pago Stripe válido.
+~~Ninguna Consultation se confirma sin pago Stripe válido.~~ — **DEPRECADA** (#067)
+
+---
+
+# RB-NEW-001
+
+Las Consultations se confirman directamente al crearse, sin pago previo. El appointment nace en estado `CONFIRMED`.
+
+---
+
+# RB-NEW-002
+
+El email de confirmación de consulta se envía inmediatamente tras crear el appointment, desde la API (`POST /api/consultations`), sin depender del webhook de Stripe.
+
+---
+
+# RB-NEW-003
+
+Al cancelar una consulta sin registro `Payment` asociado, no se ejecuta ninguna lógica de reembolso. La cancelación procede directamente.
 
 ---
 

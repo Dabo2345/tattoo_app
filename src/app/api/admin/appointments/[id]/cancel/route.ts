@@ -7,6 +7,7 @@ import { auditService } from "@/modules/audit/services/audit-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
 import { depositPolicyService } from "@/modules/payment/services/deposit-policy"
 import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
+import type { DepositPolicyResult } from "@/modules/payment/services/deposit-policy"
 
 const NON_CANCELLABLE = ["CANCELLED", "COMPLETED", "NO_SHOW"] as const
 
@@ -25,8 +26,15 @@ export const POST = withAdminAuth(
       )
     }
 
-    // Ejecutar política de depósito (RB-013/014): reembolso si ≥4 días
-    const policyResult = await depositPolicyService.handleCancellation(id, appointment.startsAt)
+    // RB-NEW-003: si no existe Payment (consultas sin pago), omitir lógica de reembolso
+    const payment = await paymentRepository.findByAppointmentId(id)
+
+    let policyResult: DepositPolicyResult
+    if (!payment) {
+      policyResult = { refunded: false, reason: "too_late" }
+    } else {
+      policyResult = await depositPolicyService.handleCancellation(id, appointment.startsAt)
+    }
 
     await bookingRepository.cancelAppointment(id)
 
@@ -41,11 +49,7 @@ export const POST = withAdminAuth(
 
     await notificationService.sendAppointmentCancelled(id)
 
-    let refundAmount = 0
-    if (policyResult.refunded) {
-      const payment = await paymentRepository.findByAppointmentId(id)
-      refundAmount = Number(payment?.amount ?? 0)
-    }
+    const refundAmount = policyResult.refunded ? Number(payment!.amount) : 0
 
     return createApiResponse({
       appointment: { id, status: "CANCELLED" },

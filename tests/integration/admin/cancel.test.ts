@@ -88,7 +88,7 @@ const params = Promise.resolve({ id: "apt-1" })
 describe("POST /api/admin/appointments/[id]/cancel", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: refund eligible (≥4 days)
+    // Default: cita con pago y reembolso elegible (≥4 días)
     mockHandleCancellation.mockResolvedValue({ refunded: true, stripeRefundId: "re_abc123" })
     mockFindPayment.mockResolvedValue({ amount: 50 } as never)
   })
@@ -197,5 +197,27 @@ describe("POST /api/admin/appointments/[id]/cancel", () => {
     mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
     await POST(makeRequest(), { params })
     expect(mockSendCancelled).toHaveBeenCalledWith("apt-1")
+  })
+
+  it("retorna 200 con refunded=false sin llamar a depositPolicyService cuando la cita no tiene Payment (RB-NEW-003)", async () => {
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
+    mockFindPayment.mockResolvedValueOnce(null)
+
+    const res = await POST(makeRequest(), { params })
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.refunded).toBe(false)
+    expect(body.data.refundAmount).toBe(0)
+    expect(mockHandleCancellation).not.toHaveBeenCalled()
+  })
+
+  it("cancela el appointment aunque no haya Payment asociado", async () => {
+    mockFindAppointmentById.mockResolvedValueOnce(makeAppointment() as never)
+    mockFindPayment.mockResolvedValueOnce(null)
+
+    await POST(makeRequest(), { params })
+
+    expect(mockCancelAppointment).toHaveBeenCalledWith("apt-1")
   })
 })

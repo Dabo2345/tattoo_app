@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { bookingService } from "@/modules/booking/services/booking-service"
-import { paymentService } from "@/modules/payment/services/payment-service"
+import { notificationService } from "@/modules/notification/services/notification-service"
 import { createConsultationSchema } from "@/modules/booking/schemas/create-consultation.schema"
 import { createApiResponse } from "@/lib/api/response"
 import { withErrorHandler } from "@/lib/api/middleware"
@@ -11,7 +11,8 @@ export const POST = withErrorHandler(async (request: NextRequest): Promise<NextR
 
   const { appointmentId } = await bookingService.createConsultation(parsed)
 
-  const { checkoutUrl } = await paymentService.createCheckoutSession(appointmentId)
+  // RB-NEW-002: email de confirmación se envía inmediatamente tras crear la consulta
+  await notificationService.sendConsultationConfirmed(appointmentId)
 
-  return createApiResponse({ appointmentId, stripeCheckoutUrl: checkoutUrl }, 201)
+  return createApiResponse({ appointmentId, status: "CONFIRMED" }, 201)
 })

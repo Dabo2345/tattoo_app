@@ -246,19 +246,19 @@ export const bookingService = {
       throw new BookingError("SLOT_NOT_AVAILABLE")
     }
 
-    // 2. Crear appointment en estado PENDING_PAYMENT (regla RB-003)
+    // 2. Crear appointment en estado CONFIRMED (RB-NEW-001: sin pago previo)
     const appointment = await bookingRepository.createAppointment({
       ...data,
-      status: "PENDING_PAYMENT",
+      status: "CONFIRMED",
     })
 
-    // 3. Crear Stripe checkout
-    const checkout = await paymentService.createCheckout(appointment)
-
-    // 4. Audit log (RB-020)
+    // 3. Audit log (RB-020)
     await auditService.log("CONSULTATION_CREATED", appointment.id)
 
-    return { appointment, stripeCheckoutUrl: checkout.url }
+    // 4. Email de confirmación inmediato (RB-NEW-002)
+    await notificationService.sendConsultationConfirmed(appointment.id)
+
+    return { appointmentId: appointment.id }
   },
 }
 ```
@@ -559,7 +559,8 @@ Stripe → POST /api/webhooks/stripe
               ↓
          Identificar tipo de evento
               ↓
-         checkout.session.completed → confirmar appointment + enviar notificación
+         checkout.session.completed → confirmar appointment PENDING_PAYMENT legacy + notificación
+                                      (nuevas consultas nacen CONFIRMED directamente — RB-NEW-001)
          charge.refunded → actualizar Payment a REFUNDED
          Evento desconocido → loguear + responder 200 (no rechazar)
               ↓

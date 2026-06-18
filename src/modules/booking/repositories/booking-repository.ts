@@ -2,9 +2,8 @@ import { prisma } from "@/lib/db/prisma"
 
 export const bookingRepository = {
   /**
-   * Crea un Appointment de tipo CONSULTATION en estado PENDING_PAYMENT.
-   * RB-002: depositRequired=true. RB-003: estado inicial sin pago confirmado.
-   * depositAmount queda null hasta que Stripe genera el checkout (#017).
+   * Crea un Appointment de tipo CONSULTATION en estado CONFIRMED.
+   * RB-NEW-001: las consultas se confirman directamente, sin pago previo.
    */
   async createConsultation(data: {
     clientId: string
@@ -16,11 +15,11 @@ export const bookingRepository = {
       data: {
         clientId: data.clientId,
         type: "CONSULTATION",
-        status: "PENDING_PAYMENT",
+        status: "CONFIRMED",
         startsAt: data.startsAt,
         endsAt: data.endsAt,
         notes: data.notes,
-        depositRequired: true,
+        depositRequired: false,
       },
     })
   },

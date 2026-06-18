@@ -81,11 +81,11 @@ const mockAppointment = {
   id: "appt-001",
   clientId: "client-001",
   type: "CONSULTATION" as const,
-  status: "PENDING_PAYMENT" as const,
+  status: "CONFIRMED" as const,
   startsAt: validInput.startsAt,
   endsAt: validInput.endsAt,
   notes: validInput.tattooDescription,
-  depositRequired: true,
+  depositRequired: false,
   depositAmount: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -147,13 +147,13 @@ describe("bookingService.createConsultation", () => {
     expect(mockAuditLog).not.toHaveBeenCalled()
   })
 
-  it("el appointment se crea con status PENDING_PAYMENT", async () => {
+  it("el appointment se crea en estado CONFIRMED (RB-NEW-001: sin pago previo)", async () => {
     await bookingService.createConsultation(validInput)
 
     expect(mockCreateConsultation).toHaveBeenCalledWith(
       expect.objectContaining({ clientId: mockClient.id })
     )
-    // El status PENDING_PAYMENT lo gestiona el repositorio internamente
+    // El status CONFIRMED lo gestiona el repositorio internamente
     expect(mockCreateConsultation).toHaveBeenCalledOnce()
   })
 

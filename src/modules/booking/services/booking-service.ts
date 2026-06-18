@@ -12,7 +12,7 @@ export const bookingService = {
    * Crea una Consultation siguiendo el flujo:
    * 1. Verificar disponibilidad del slot (RB-012)
    * 2. Crear o recuperar el Client por email (RB-001)
-   * 3. Crear Appointment en PENDING_PAYMENT (RB-002, RB-003)
+   * 3. Crear Appointment en CONFIRMED (RB-NEW-001: sin pago previo)
    * 4. Registrar en AuditLog (RB-020)
    *
    * Lanza SlotNotAvailableError si el slot ya no está libre.
@@ -28,7 +28,7 @@ export const bookingService = {
       phone: input.phone,
     })
 
-    // 3. Crear Appointment en PENDING_PAYMENT
+    // 3. Crear Appointment en CONFIRMED (RB-NEW-001)
     const appointment = await bookingRepository.createConsultation({
       clientId: client.id,
       startsAt: input.startsAt,

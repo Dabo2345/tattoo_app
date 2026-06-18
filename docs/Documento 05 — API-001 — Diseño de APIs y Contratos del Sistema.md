@@ -149,7 +149,9 @@ Appointment
 
 status:
 
-PENDING_PAYMENT
+CONFIRMED
+
+(RB-NEW-001: confirmación directa, sin pago previo)
 
 ---
 
@@ -159,7 +161,7 @@ Respuesta
 
 {
 appointmentId,
-stripeCheckoutUrl
+status: "CONFIRMED"
 }
 
 ---
