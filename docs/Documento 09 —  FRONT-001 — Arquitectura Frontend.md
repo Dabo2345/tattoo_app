@@ -302,6 +302,25 @@ TattooSessions
 Calendar
 Slots
 
+#### BookingWizard (`/modules/booking/components/booking-wizard.tsx`)
+
+Componente público multi-paso para reservar consulta.
+
+Estados (`WizardStep`):
+
+```
+"date" → "slot" → "form" → "confirmed"
+```
+
+Flujo actualizado (RB-NEW-001, issue #068):
+
+* Paso `form`: envía POST /api/consultations
+* En éxito: transiciona a `"confirmed"` en la misma página (sin redirección externa)
+* Paso `"confirmed"`: muestra `ConfirmationView` con nombre del cliente, fecha y hora
+* Errores de API (slot ocupado, red caída): se muestran inline en el formulario — el cliente puede reintentar sin salir
+
+No realiza redirección a Stripe ni a ninguna URL externa.
+
 ---
 
 ### gallery

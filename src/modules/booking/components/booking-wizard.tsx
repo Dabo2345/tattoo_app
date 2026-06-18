@@ -12,7 +12,7 @@ interface TimeSlot {
   endsAt: string
 }
 
-type WizardStep = "date" | "slot" | "form" | "submitting" | "error"
+type WizardStep = "date" | "slot" | "form" | "confirmed"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ function StepIndicator({ current }: { current: WizardStep }) {
     { id: "slot", label: "Horario" },
     { id: "form", label: "Tus datos" },
   ]
-  const order: WizardStep[] = ["date", "slot", "form", "submitting", "error"]
+  const order: WizardStep[] = ["date", "slot", "form", "confirmed"]
   const currentIdx = order.indexOf(current)
 
   return (
@@ -229,10 +229,12 @@ function ConsultationForm({
   date,
   slot,
   onBack,
+  onSuccess,
 }: {
   date: string
   slot: TimeSlot
   onBack: () => void
+  onSuccess: (name: string) => void
 }) {
   const [form, setForm] = useState<ConsultationFormData>({
     name: "",
@@ -272,13 +274,15 @@ function ConsultationForm({
         body: JSON.stringify({
           ...result.data,
           startsAt: slot.startsAt,
+          endsAt: slot.endsAt,
         }),
       })
       const body = await res.json()
       if (!res.ok || !body.success) {
         throw new Error(body.error?.message ?? "Error al crear la reserva")
       }
-      window.location.href = body.data.stripeCheckoutUrl
+      // RB-NEW-001: confirmación directa, sin redirect a Stripe
+      onSuccess(form.name)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Error inesperado. Inténtalo de nuevo.")
       setSubmitting(false)
@@ -426,10 +430,50 @@ function ConsultationForm({
           Atrás
         </Button>
         <Button type="submit" disabled={submitting} size="lg">
-          {submitting ? "Procesando…" : "Ir al pago"}
+          {submitting ? "Procesando…" : "Confirmar reserva"}
         </Button>
       </div>
     </form>
+  )
+}
+
+// ─── Confirmation View ────────────────────────────────────────────────────────
+
+function ConfirmationView({ name, date, slot }: { name: string; date: string; slot: TimeSlot }) {
+  const dateLabel = new Date(date + "T00:00:00").toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+  const timeLabel = formatTime(slot.startsAt)
+
+  return (
+    <div className="text-center py-8">
+      <div className="flex justify-center mb-6">
+        <span
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/20 text-3xl text-accent"
+          aria-hidden="true"
+        >
+          ✓
+        </span>
+      </div>
+
+      <h2 className="text-h2 text-foreground mb-2">¡Reserva confirmada!</h2>
+      <p className="text-foreground-secondary mb-6">
+        Hola <span className="font-medium text-foreground">{name}</span>, tu consulta está
+        confirmada.
+      </p>
+
+      <div className="rounded-lg border border-border bg-surface p-4 text-sm text-foreground mb-6 max-w-sm mx-auto">
+        <p className="font-medium capitalize">{dateLabel}</p>
+        <p className="text-foreground-secondary">a las {timeLabel}</p>
+      </div>
+
+      <p className="text-sm text-foreground-secondary">
+        Recibirás un email de confirmación con todos los detalles en breve.
+      </p>
+    </div>
   )
 }
 
@@ -439,6 +483,7 @@ export function BookingWizard() {
   const [step, setStep] = useState<WizardStep>("date")
   const [selectedDate, setSelectedDate] = useState("")
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
+  const [confirmedName, setConfirmedName] = useState("")
 
   return (
     <div className="w-full max-w-xl mx-auto" aria-label="Asistente de reserva">
@@ -465,7 +510,19 @@ export function BookingWizard() {
       )}
 
       {step === "form" && selectedDate && selectedSlot && (
-        <ConsultationForm date={selectedDate} slot={selectedSlot} onBack={() => setStep("slot")} />
+        <ConsultationForm
+          date={selectedDate}
+          slot={selectedSlot}
+          onBack={() => setStep("slot")}
+          onSuccess={(name) => {
+            setConfirmedName(name)
+            setStep("confirmed")
+          }}
+        />
+      )}
+
+      {step === "confirmed" && selectedDate && selectedSlot && (
+        <ConfirmationView name={confirmedName} date={selectedDate} slot={selectedSlot} />
       )}
     </div>
   )

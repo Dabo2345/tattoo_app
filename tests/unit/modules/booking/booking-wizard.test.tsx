@@ -15,6 +15,40 @@ beforeEach(() => {
   global.fetch = vi.fn()
 })
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function navigateToFormStep() {
+  vi.mocked(global.fetch).mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ success: true, data: mockSlots }),
+  } as Response)
+
+  render(<BookingWizard />)
+
+  fireEvent.change(screen.getByLabelText(/fecha de la consulta/i), {
+    target: { value: "2026-08-10" },
+  })
+  fireEvent.click(screen.getByRole("button", { name: /siguiente/i }))
+  fireEvent.click(await screen.findByText("10:00"))
+  fireEvent.click(screen.getByRole("button", { name: /siguiente.*datos/i }))
+}
+
+async function fillAndSubmitForm() {
+  fireEvent.change(screen.getByLabelText(/nombre completo/i), {
+    target: { value: "Ana García" },
+  })
+  fireEvent.change(screen.getByLabelText(/email/i), {
+    target: { value: "ana@example.com" },
+  })
+  fireEvent.change(screen.getByLabelText(/teléfono/i), {
+    target: { value: "+34 600 123 456" },
+  })
+  fireEvent.change(screen.getByLabelText(/describe tu idea/i), {
+    target: { value: "Quiero un tatuaje de mandala en el antebrazo izquierdo" },
+  })
+  fireEvent.click(screen.getByRole("button", { name: /confirmar reserva/i }))
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("BookingWizard", () => {
@@ -75,23 +109,9 @@ describe("BookingWizard", () => {
   })
 
   it("shows validation errors when submitting empty form", async () => {
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
-      json: async () => ({ success: true, data: mockSlots }),
-    } as Response)
+    await navigateToFormStep()
 
-    render(<BookingWizard />)
-
-    // Navigate to form step
-    fireEvent.change(screen.getByLabelText(/fecha de la consulta/i), {
-      target: { value: "2026-08-10" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /siguiente/i }))
-    fireEvent.click(await screen.findByText("10:00"))
-    fireEvent.click(screen.getByRole("button", { name: /siguiente.*datos/i }))
-
-    // Submit empty form
-    fireEvent.click(screen.getByRole("button", { name: /ir al pago/i }))
+    fireEvent.click(screen.getByRole("button", { name: /confirmar reserva/i }))
 
     await waitFor(() => {
       expect(screen.getAllByRole("alert").length).toBeGreaterThan(0)
@@ -99,59 +119,110 @@ describe("BookingWizard", () => {
   })
 
   it("calls POST /api/consultations with valid form data", async () => {
-    vi.mocked(global.fetch)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true, data: mockSlots }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: { appointmentId: "apt-1", stripeCheckoutUrl: "https://stripe.com/pay/xxx" },
-        }),
-      } as Response)
+    await navigateToFormStep()
 
-    // Mock window.location
-    const locationSpy = vi.spyOn(window, "location", "get").mockReturnValue({
-      ...window.location,
-      href: "",
-    } as Location)
-    Object.defineProperty(window, "location", {
-      value: { href: "" },
-      writable: true,
-    })
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: { appointmentId: "apt-1", status: "CONFIRMED" } }),
+    } as Response)
 
-    render(<BookingWizard />)
-
-    fireEvent.change(screen.getByLabelText(/fecha de la consulta/i), {
-      target: { value: "2026-08-10" },
-    })
-    fireEvent.click(screen.getByRole("button", { name: /siguiente/i }))
-    fireEvent.click(await screen.findByText("10:00"))
-    fireEvent.click(screen.getByRole("button", { name: /siguiente.*datos/i }))
-
-    fireEvent.change(screen.getByLabelText(/nombre completo/i), {
-      target: { value: "Ana García" },
-    })
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "ana@example.com" },
-    })
-    fireEvent.change(screen.getByLabelText(/teléfono/i), {
-      target: { value: "+34 600 123 456" },
-    })
-    fireEvent.change(screen.getByLabelText(/describe tu idea/i), {
-      target: { value: "Quiero un tatuaje de mandala en el antebrazo izquierdo" },
-    })
-
-    fireEvent.click(screen.getByRole("button", { name: /ir al pago/i }))
+    await fillAndSubmitForm()
 
     await waitFor(() => {
       const calls = vi.mocked(global.fetch).mock.calls
       const consultationCall = calls.find((c) => String(c[0]).includes("/api/consultations"))
       expect(consultationCall).toBeDefined()
     })
+  })
 
-    locationSpy.mockRestore()
+  it("shows confirmation view after successful submit", async () => {
+    await navigateToFormStep()
+
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: { appointmentId: "apt-1", status: "CONFIRMED" } }),
+    } as Response)
+
+    await fillAndSubmitForm()
+
+    await waitFor(() => {
+      expect(screen.getByText(/reserva confirmada/i)).toBeInTheDocument()
+    })
+  })
+
+  it("confirmation view shows the client name", async () => {
+    await navigateToFormStep()
+
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: { appointmentId: "apt-1", status: "CONFIRMED" } }),
+    } as Response)
+
+    await fillAndSubmitForm()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ana García/)).toBeInTheDocument()
+    })
+  })
+
+  it("confirmation view shows date and time of the appointment", async () => {
+    await navigateToFormStep()
+
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: { appointmentId: "apt-1", status: "CONFIRMED" } }),
+    } as Response)
+
+    await fillAndSubmitForm()
+
+    await waitFor(() => {
+      // Should show time formatted from the selected slot (10:00 UTC)
+      expect(screen.getByText(/10:00/)).toBeInTheDocument()
+    })
+  })
+
+  it("does not redirect to any external URL after successful submit", async () => {
+    await navigateToFormStep()
+
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: { appointmentId: "apt-1", status: "CONFIRMED" } }),
+    } as Response)
+
+    const originalLocation = window.location.href
+    await fillAndSubmitForm()
+
+    await waitFor(() => {
+      expect(screen.getByText(/reserva confirmada/i)).toBeInTheDocument()
+    })
+
+    expect(window.location.href).toBe(originalLocation)
+  })
+
+  it("shows submitError when API returns an error", async () => {
+    await navigateToFormStep()
+
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ success: false, error: { message: "Slot no disponible" } }),
+    } as Response)
+
+    await fillAndSubmitForm()
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/slot no disponible/i)
+    })
+  })
+
+  it("shows submitError when fetch throws", async () => {
+    await navigateToFormStep()
+
+    vi.mocked(global.fetch).mockRejectedValueOnce(new Error("Network error"))
+
+    await fillAndSubmitForm()
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/network error/i)
+    })
   })
 })
