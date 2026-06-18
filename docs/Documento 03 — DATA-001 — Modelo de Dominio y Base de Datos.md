@@ -86,6 +86,10 @@ AdminUser
 
 AuditLog
 
+TattooPlan
+
+TattooPlanSession
+
 ---
 
 # 4. Enumeraciones
@@ -137,6 +141,30 @@ FAILED
 MagicLinkPurpose
 
 MANAGE_APPOINTMENT
+
+---
+
+TattooPlanStatus
+
+DRAFT
+
+SENT
+
+IN_PROGRESS
+
+COMPLETED
+
+---
+
+TattooPlanSessionStatus
+
+PENDING
+
+LINK_SENT
+
+BOOKED
+
+COMPLETED
 
 ---
 
@@ -243,6 +271,12 @@ N MagicLinks
 1 Appointment
 
 0..1 SessionLink
+
+---
+
+1 Appointment (CONSULTATION)
+
+0..1 TattooPlan
 
 ---
 
@@ -404,5 +438,113 @@ updatedAt
 Restricciones
 
 Un Payment puede tener cero o un Refund.
+
+---
+
+# 11. Entidad TattooPlan
+
+Agrupa las características del tatuaje acordado tras una consulta.
+
+Vinculado a exactamente 1 Appointment de tipo CONSULTATION.
+
+---
+
+Campos
+
+id
+
+consultationAppointmentId
+
+style
+
+size
+
+placement
+
+description
+
+notes
+
+status
+
+createdAt
+
+updatedAt
+
+---
+
+Restricciones
+
+consultationAppointmentId único (1 plan por consulta)
+
+---
+
+Relaciones
+
+1 TattooPlan
+
+N TattooPlanSession
+
+---
+
+1 TattooPlan
+
+1 Appointment (CONSULTATION)
+
+---
+
+# 12. Entidad TattooPlanSession
+
+Representa cada sesión individual dentro de un TattooPlan.
+
+---
+
+Campos
+
+id
+
+planId
+
+sessionNumber
+
+durationMinutes
+
+sessionLinkId
+
+status
+
+createdAt
+
+updatedAt
+
+---
+
+Restricciones
+
+(planId, sessionNumber) único — no puede haber dos sesiones con el mismo número en el mismo plan
+
+sessionLinkId único — un SessionLink pertenece como máximo a 1 TattooPlanSession
+
+---
+
+Relaciones
+
+N TattooPlanSession
+
+1 TattooPlan (onDelete: Cascade)
+
+---
+
+1 TattooPlanSession
+
+0..1 SessionLink
+
+---
+
+Reglas
+
+sessionLinkId es null hasta que el admin genera el enlace para esa sesión.
+
+Al eliminar un TattooPlan, sus TattooPlanSession se eliminan en cascada.
 
 ---

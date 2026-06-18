@@ -53,6 +53,20 @@ enum MagicLinkPurpose {
   MANAGE_APPOINTMENT
 }
 
+enum TattooPlanStatus {
+  DRAFT
+  SENT
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TattooPlanSessionStatus {
+  PENDING
+  LINK_SENT
+  BOOKED
+  COMPLETED
+}
+
 // ─── ENTIDADES ────────────────────────────────────────────────────────────────
 
 model Client {
@@ -89,6 +103,7 @@ model Appointment {
   magicLinks    MagicLink[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  tattooPlan    TattooPlan?
 
   @@index([clientId])
   @@index([status])
@@ -108,7 +123,8 @@ model SessionLink {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  appointment       Appointment        @relation(fields: [appointmentId], references: [id])
+  tattooPlanSession TattooPlanSession?
 
   @@index([tokenHash])
   @@map("session_links")
@@ -237,6 +253,43 @@ model AuditLog {
   @@index([entityId, entityType])
   @@index([adminUserId])
   @@map("audit_logs")
+}
+
+// ─── TATTOO PLAN (#069) ──────────────────────────────────────────────────────
+
+model TattooPlan {
+  id                        String           @id @default(cuid())
+  consultationAppointmentId String           @unique
+  style                     String
+  size                      String
+  placement                 String
+  description               String
+  notes                     String?
+  status                    TattooPlanStatus @default(DRAFT)
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+
+  consultationAppointment Appointment         @relation(fields: [consultationAppointmentId], references: [id])
+  sessions                TattooPlanSession[]
+
+  @@map("tattoo_plans")
+}
+
+model TattooPlanSession {
+  id              String                  @id @default(cuid())
+  planId          String
+  sessionNumber   Int
+  durationMinutes Int
+  sessionLinkId   String?                 @unique
+  status          TattooPlanSessionStatus @default(PENDING)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  plan        TattooPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  sessionLink SessionLink? @relation(fields: [sessionLinkId], references: [id])
+
+  @@unique([planId, sessionNumber])
+  @@map("tattoo_plan_sessions")
 }
 
 // ─── CONTENIDO PÚBLICO (#044) ────────────────────────────────────────────────
