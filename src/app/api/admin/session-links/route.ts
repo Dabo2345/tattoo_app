@@ -2,7 +2,6 @@ import { createHash, randomBytes } from "crypto"
 import { z } from "zod"
 import { withAdminAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
-import { env } from "@/lib/env"
 import { notificationService } from "@/modules/notification/services/notification-service"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -144,8 +143,6 @@ export async function POST(request: Request) {
       },
     })
 
-    const linkUrl = `${env.NEXT_PUBLIC_APP_URL}/session-link/${token}`
-
     await notificationService.sendSessionLink(consultationId, token)
 
     return Response.json({
@@ -153,7 +150,6 @@ export async function POST(request: Request) {
       data: {
         sessionLink: {
           id: sessionLink.id,
-          url: linkUrl,
           expiresAt: sessionLink.expiresAt.toISOString(),
           sessionDurationMinutes: sessionLink.sessionDurationMinutes,
           artistNotes: sessionLink.artistNotes,

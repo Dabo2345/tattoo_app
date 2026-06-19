@@ -24,12 +24,6 @@ vi.mock("@/lib/db/prisma", () => ({
   },
 }))
 
-vi.mock("@/lib/env", () => ({
-  env: {
-    NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-  },
-}))
-
 vi.mock("@/modules/notification/services/notification-service", () => ({
   notificationService: {
     sendSessionLink: vi.fn(),
@@ -171,9 +165,7 @@ describe("POST /api/admin/session-links", () => {
     const body = await res.json()
     expect(body.success).toBe(true)
     expect(body.data.sessionLink.id).toBe("sl-1")
-    expect(body.data.sessionLink.url).toMatch(
-      /^http:\/\/localhost:3000\/session-link\/[a-f0-9]{64}$/
-    )
+    expect(body.data.sessionLink.url).toBeUndefined()
     expect(body.data.sessionLink.sessionDurationMinutes).toBe(120)
   })
 
