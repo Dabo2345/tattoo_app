@@ -171,7 +171,9 @@ describe("POST /api/admin/session-links", () => {
     const body = await res.json()
     expect(body.success).toBe(true)
     expect(body.data.sessionLink.id).toBe("sl-1")
-    expect(body.data.sessionLink.url).toMatch(/^http:\/\/localhost:3000\/book\/[a-f0-9]{64}$/)
+    expect(body.data.sessionLink.url).toMatch(
+      /^http:\/\/localhost:3000\/session-link\/[a-f0-9]{64}$/
+    )
     expect(body.data.sessionLink.sessionDurationMinutes).toBe(120)
   })
 

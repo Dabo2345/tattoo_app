@@ -144,7 +144,7 @@ export async function POST(request: Request) {
       },
     })
 
-    const linkUrl = `${env.NEXT_PUBLIC_APP_URL}/book/${token}`
+    const linkUrl = `${env.NEXT_PUBLIC_APP_URL}/session-link/${token}`
 
     await notificationService.sendSessionLink(consultationId, token)
 
