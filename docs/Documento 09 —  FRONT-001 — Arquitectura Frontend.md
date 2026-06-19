@@ -571,6 +571,20 @@ Reglas:
 
 ---
 
+# 22.1 Flujo de generación de SessionLink desde admin panel
+
+---
+
+Al generar un SessionLink desde `WeeklyAgenda` (DetailPanel):
+
+1. Admin rellena duración y notas opcionales en la view `session-link-form`
+2. `POST /api/admin/session-links` crea el link en DB y envía el email automáticamente al cliente
+3. La view cambia a `session-link-result`, que muestra confirmación de email enviado (icono check + texto)
+4. El admin NO ve ni copia la URL — el token nunca se expone en la UI del admin
+5. El cliente recibe el email con el link correcto (`/session-link/:token`)
+
+---
+
 # 23. Admin Panel Rules
 
 ---

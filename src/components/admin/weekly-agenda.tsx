@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, X, CalendarDays, Copy, Check } from "lucide-react"
+import { ChevronLeft, ChevronRight, X, CalendarDays, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -166,8 +166,6 @@ function DetailPanel({
   const [newStartAt, setNewStartAt] = useState("")
   const [durationMinutes, setDurationMinutes] = useState("60")
   const [sessionNotes, setSessionNotes] = useState("")
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -235,20 +233,12 @@ function DetailPanel({
       if (!res.ok || !body.success) {
         throw new Error(body?.error?.message ?? "Error al generar el SessionLink")
       }
-      setGeneratedLink(body.data.sessionLink.url)
       setView("session-link-result")
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Error de red")
     } finally {
       setActionLoading(false)
     }
-  }
-
-  async function handleCopyLink() {
-    if (!generatedLink) return
-    await navigator.clipboard.writeText(generatedLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -532,31 +522,13 @@ function DetailPanel({
       )}
 
       {/* ── SessionLink result ───────────────────────────────────── */}
-      {view === "session-link-result" && generatedLink && (
-        <div>
-          <p className="text-sm font-medium text-foreground mb-1">SessionLink generado</p>
-          <p className="text-xs text-foreground-secondary mb-3">
-            Envía este link a {appointment.client.name} para que reserve su sesión.
+      {view === "session-link-result" && (
+        <div className="text-center py-4">
+          <CheckCircle className="h-8 w-8 text-green-400 mx-auto mb-3" aria-hidden="true" />
+          <p className="text-sm font-medium text-foreground mb-1">Enlace enviado</p>
+          <p className="text-xs text-foreground-secondary mb-4">
+            El cliente recibirá el enlace de reserva en su email.
           </p>
-          <div className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 mb-4">
-            <p
-              className="text-xs text-foreground truncate flex-1 font-mono"
-              aria-label="Link generado"
-            >
-              {generatedLink}
-            </p>
-            <button
-              onClick={handleCopyLink}
-              aria-label="Copiar link"
-              className="shrink-0 text-foreground-muted hover:text-foreground transition-colors"
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-400" aria-hidden="true" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-            </button>
-          </div>
           <Button variant="outline" size="sm" onClick={() => setView("detail")}>
             Volver al detalle
           </Button>

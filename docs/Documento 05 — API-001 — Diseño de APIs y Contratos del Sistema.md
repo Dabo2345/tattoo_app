@@ -234,10 +234,10 @@ Respuesta
 {
 sessionLink: {
   id,
-  url,        ← formato: {APP_URL}/session-link/{token}
   expiresAt,
   sessionDurationMinutes,
   artistNotes
+  ← url NO incluida: el email se envía automáticamente al cliente
 }
 }
 
