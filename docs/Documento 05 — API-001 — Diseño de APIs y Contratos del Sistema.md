@@ -232,7 +232,13 @@ notes
 Respuesta
 
 {
-sessionLink
+sessionLink: {
+  id,
+  url,        ← formato: {APP_URL}/session-link/{token}
+  expiresAt,
+  sessionDurationMinutes,
+  artistNotes
+}
 }
 
 ---
