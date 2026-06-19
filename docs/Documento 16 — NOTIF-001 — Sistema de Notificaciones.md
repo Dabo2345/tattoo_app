@@ -188,6 +188,14 @@ Esto permite:
 | `reminder-24h` | Nombre cliente, fecha y hora, dirección estudio, instrucciones preparación |
 | `reminder-2h` | Nombre cliente, hora cita, dirección estudio |
 
+## 6.3 Zona horaria en el formateo de fechas
+
+**RB-NOTIF-TZ-001:** Todas las fechas y horas mostradas en los emails se formatean en **UTC** (`timeZone: "UTC"`), igual que se almacenan en la base de datos.
+
+- Los appointments se guardan en UTC en la DB
+- Las funciones `formatDate()` y `formatTime()` del `NotificationService` usan `timeZone: "UTC"` explícitamente
+- Esto evita desfases por cambio de horario de verano/invierno (DST), que causaban una diferencia de +2h con `Europe/Madrid` en CEST
+
 ## 6.3 Datos del remitente
 
 - **From**: valor de `RESEND_FROM_NAME` + `RESEND_FROM_EMAIL` (ENV-001)

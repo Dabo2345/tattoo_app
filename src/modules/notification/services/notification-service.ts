@@ -28,7 +28,7 @@ function formatDate(date: Date): string {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "Europe/Madrid",
+    timeZone: "UTC",
   }).format(date)
   return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
@@ -37,7 +37,7 @@ function formatTime(date: Date): string {
   return new Intl.DateTimeFormat("es-ES", {
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "Europe/Madrid",
+    timeZone: "UTC",
   }).format(date)
 }
 
