@@ -301,7 +301,7 @@ export const notificationService = {
         return
       }
 
-      const sessionLinkUrl = `${env.NEXT_PUBLIC_APP_URL}/book/${sessionLinkToken}`
+      const sessionLinkUrl = `${env.NEXT_PUBLIC_APP_URL}/session-link/${sessionLinkToken}`
       const expiresInHours = appointment.sessionLink
         ? Math.round((appointment.sessionLink.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60))
         : 720

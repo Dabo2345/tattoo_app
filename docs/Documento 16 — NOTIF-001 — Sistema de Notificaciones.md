@@ -184,7 +184,7 @@ Esto permite:
 | `appointment-cancelled` | Nombre cliente, fecha cancelada, política de depósito aplicada (reembolso o retención) |
 | `appointment-rescheduled` | Nombre cliente, fecha anterior, nueva fecha, MagicLink actualizado |
 | `magic-link` | Nombre cliente, enlace de gestión (válido 2 horas), botones: ver cita, cancelar, reprogramar |
-| `session-link` | Nombre cliente, enlace para reservar sesión (válido 30 días), instrucciones |
+| `session-link` | Nombre cliente, enlace para reservar sesión `{APP_URL}/session-link/{token}` (válido 30 días), instrucciones |
 | `reminder-24h` | Nombre cliente, fecha y hora, dirección estudio, instrucciones preparación |
 | `reminder-2h` | Nombre cliente, hora cita, dirección estudio |
 

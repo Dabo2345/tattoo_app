@@ -322,7 +322,7 @@ describe("notificationService", () => {
         expect.objectContaining({
           react: expect.objectContaining({
             props: expect.objectContaining({
-              sessionLinkUrl: "https://estudio.com/book/tok-session-456",
+              sessionLinkUrl: "https://estudio.com/session-link/tok-session-456",
             }),
           }),
         })
