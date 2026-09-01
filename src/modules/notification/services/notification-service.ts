@@ -334,6 +334,15 @@ export const notificationService = {
   },
 
   /**
+   * Enviado al cliente cuando el admin envía el plan de tatuaje con los enlaces de reserva.
+   * TODO: #073 — implementar template de email y envío real.
+   */
+  async sendTattooPlan(planId: string): Promise<void> {
+    // Stub: el template y envío real se implementan en issue #073
+    logger.info({ planId }, "sendTattooPlan: stub — pendiente implementación en #073")
+  },
+
+  /**
    * Recordatorio 24h antes de la cita. Llamado por el cron job.
    */
   async sendReminder24h(appointmentId: string): Promise<void> {

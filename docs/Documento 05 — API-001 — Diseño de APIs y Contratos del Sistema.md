@@ -463,6 +463,52 @@ Respuesta: `{ success: true, data: { appointment } }`
 
 ---
 
+## Crear plan de tatuaje
+
+POST
+
+/api/admin/appointments/:id/tattoo-plan
+
+Auth: Admin session requerida
+
+Body: `{ style, size, placement, description, notes?, sessions: [{ sessionNumber, durationMinutes }] }`
+
+Respuesta 201: `{ success: true, data: { id, consultationAppointmentId, style, size, placement, description, notes, status: "DRAFT", sessions } }`
+
+Errores: 404 cita no encontrada, 422 cita no CONFIRMED/CONSULTATION, 409 plan ya existe
+
+---
+
+## Obtener plan de tatuaje
+
+GET
+
+/api/admin/appointments/:id/tattoo-plan
+
+Auth: Admin session requerida
+
+Respuesta 200: `{ success: true, data: { id, consultationAppointmentId, style, size, placement, description, notes, status, sessions } }`
+
+Errores: 404 plan no encontrado
+
+---
+
+## Enviar plan al cliente
+
+POST
+
+/api/admin/tattoo-plans/:planId/send
+
+Auth: Admin session requerida
+
+Sin body. Genera un SessionLink por cada sesión y marca el plan como SENT.
+
+Respuesta 200: `{ success: true, data: { planId, status: "SENT", sessionsCount } }`
+
+Errores: 404 plan no encontrado, 422 plan no está en DRAFT
+
+---
+
 ## Bloquear periodo
 
 POST
