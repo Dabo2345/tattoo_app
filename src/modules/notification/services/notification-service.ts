@@ -12,6 +12,7 @@ import { AppointmentCancelledEmail } from "../templates/appointment-cancelled"
 import { AppointmentRescheduledEmail } from "../templates/appointment-rescheduled"
 import { MagicLinkEmail } from "../templates/magic-link"
 import { SessionLinkEmail } from "../templates/session-link"
+import { TattooPlanEmail } from "../templates/tattoo-plan"
 import { Reminder24hEmail } from "../templates/reminder-24h"
 import { Reminder2hEmail } from "../templates/reminder-2h"
 
@@ -335,11 +336,100 @@ export const notificationService = {
 
   /**
    * Enviado al cliente cuando el admin envía el plan de tatuaje con los enlaces de reserva.
-   * TODO: #073 — implementar template de email y envío real.
+   * Los tokens plain deben pasarse como parámetro ya que solo están disponibles en el momento
+   * de creación (la DB almacena únicamente el hash).
+   *
+   * RB-NOTIF-TP-001: se envía una sola vez al hacer "Enviar al cliente".
+   * RB-NOTIF-TP-002: si el envío falla, se registra Notification con status FAILED.
+   * RB-NOTIF-TP-004: URLs absolutas usando NEXT_PUBLIC_APP_URL.
+   * RB-NOTIF-TP-005: fecha de expiración en formato legible.
    */
-  async sendTattooPlan(planId: string): Promise<void> {
-    // Stub: el template y envío real se implementan en issue #073
-    logger.info({ planId }, "sendTattooPlan: stub — pendiente implementación en #073")
+  async sendTattooPlan(
+    planId: string,
+    sessionTokens: Array<{
+      sessionNumber: number
+      durationMinutes: number
+      token: string
+      expiresAt: Date
+    }>
+  ): Promise<void> {
+    try {
+      const plan = await prisma.tattooPlan.findUnique({
+        where: { id: planId },
+        include: {
+          sessions: { orderBy: { sessionNumber: "asc" } },
+          consultationAppointment: {
+            include: {
+              client: true,
+            },
+          },
+        },
+      })
+
+      if (!plan) {
+        logger.error({ planId }, "sendTattooPlan: plan not found")
+        return
+      }
+
+      const { client } = plan.consultationAppointment
+
+      if (!client.email) {
+        logger.warn({ planId, clientId: client.id }, "sendTattooPlan: client has no email")
+        await notificationRepository
+          .create(plan.consultationAppointmentId, "TATTOO_PLAN_SENT")
+          .then((n) => notificationRepository.markFailed(n.id, "Client has no email address"))
+        return
+      }
+
+      // Fetch artist and studio names
+      const [artistProfile, studioInfo] = await Promise.all([
+        prisma.artistProfile.findFirst(),
+        prisma.studioInfo.findFirst(),
+      ])
+      const artistName = artistProfile?.name ?? studioInfo?.name ?? "El artista"
+      const studioName = studioInfo?.name ?? "Estudio de Tatuajes"
+
+      const notification = await notificationRepository.create(
+        plan.consultationAppointmentId,
+        "TATTOO_PLAN_SENT"
+      )
+
+      const sessions = sessionTokens.map((st) => ({
+        sessionNumber: st.sessionNumber,
+        durationMinutes: st.durationMinutes,
+        bookingUrl: `${env.NEXT_PUBLIC_APP_URL}/session-link/${st.token}`,
+        expiresAt: st.expiresAt,
+      }))
+
+      const payload = {
+        clientName: client.name,
+        artistName,
+        studioName,
+        plan: {
+          style: plan.style,
+          size: plan.size,
+          placement: plan.placement,
+          description: plan.description,
+          notes: plan.notes ?? undefined,
+        },
+        sessions,
+      }
+
+      const result = await sendEmail({
+        to: client.email,
+        subject: `Tu plan de tatuaje está listo — ${sessions.length} sesión${sessions.length !== 1 ? "es" : ""}`,
+        react: createElement(TattooPlanEmail, payload),
+      })
+
+      if (result.success) {
+        await notificationRepository.markSent(notification.id)
+      } else {
+        await notificationRepository.markFailed(notification.id, result.error)
+        logger.error({ planId, error: result.error }, "sendTattooPlan: email failed")
+      }
+    } catch (err) {
+      logger.error({ planId, error: err }, "sendTattooPlan: unexpected error")
+    }
   },
 
   /**

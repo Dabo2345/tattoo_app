@@ -233,9 +233,14 @@ describe("tattooPlanService.sendPlanToClient", () => {
     )
   })
 
-  it("llama a notificationService.sendTattooPlan tras crear los links", async () => {
+  it("llama a notificationService.sendTattooPlan con planId y sessionTokens", async () => {
     await tattooPlanService.sendPlanToClient("plan-001")
-    expect(mockSendTattooPlan).toHaveBeenCalledWith("plan-001")
+    expect(mockSendTattooPlan).toHaveBeenCalledWith(
+      "plan-001",
+      expect.arrayContaining([
+        expect.objectContaining({ sessionNumber: expect.any(Number), token: expect.any(String) }),
+      ])
+    )
   })
 
   it("crea SessionLink con la durationMinutes correcta de cada sesión", async () => {

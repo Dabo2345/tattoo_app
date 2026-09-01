@@ -7,6 +7,15 @@ vi.mock("@/lib/db/prisma", () => ({
     appointment: {
       findUnique: vi.fn(),
     },
+    tattooPlan: {
+      findUnique: vi.fn(),
+    },
+    artistProfile: {
+      findFirst: vi.fn(),
+    },
+    studioInfo: {
+      findFirst: vi.fn(),
+    },
   },
 }))
 
@@ -52,6 +61,10 @@ import { sendEmail } from "@/lib/resend/send-email"
 import { notificationRepository } from "@/modules/notification/repositories/notification-repository"
 import { magicLinkService } from "@/modules/booking/services/magic-link-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
+
+const mockFindTattooPlan = vi.mocked(prisma.tattooPlan.findUnique)
+const mockFindArtistProfile = vi.mocked(prisma.artistProfile.findFirst)
+const mockFindStudioInfo = vi.mocked(prisma.studioInfo.findFirst)
 
 const mockFindUnique = vi.mocked(prisma.appointment.findUnique)
 const mockSendEmail = vi.mocked(sendEmail)
@@ -343,6 +356,114 @@ describe("notificationService", () => {
       await expect(
         notificationService.sendSessionLink("appt-001", "tok-session-456")
       ).resolves.toBeUndefined()
+    })
+  })
+
+  // ─── sendTattooPlan ──────────────────────────────────────────────────────────
+
+  describe("sendTattooPlan", () => {
+    const expiresAt = new Date("2026-07-18T00:00:00Z")
+
+    const basePlan = {
+      id: "plan-001",
+      consultationAppointmentId: "appt-001",
+      style: "Blackwork",
+      size: "medium",
+      placement: "Antebrazo izquierdo",
+      description: "Dragón japonés con tinta oscura y detalles geométricos",
+      notes: null,
+      status: "SENT",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      sessions: [
+        {
+          id: "sess-1",
+          planId: "plan-001",
+          sessionNumber: 1,
+          durationMinutes: 120,
+          sessionLinkId: "sl-1",
+          status: "LINK_SENT",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: "sess-2",
+          planId: "plan-001",
+          sessionNumber: 2,
+          durationMinutes: 60,
+          sessionLinkId: "sl-2",
+          status: "LINK_SENT",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      consultationAppointment: {
+        client: {
+          id: "client-001",
+          name: "Ana García",
+          email: "ana@test.com",
+          phone: "+34612345678",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+        },
+      },
+    }
+
+    const sessionTokens = [
+      { sessionNumber: 1, durationMinutes: 120, token: "tok-abc-1", expiresAt },
+      { sessionNumber: 2, durationMinutes: 60, token: "tok-abc-2", expiresAt },
+    ]
+
+    beforeEach(() => {
+      mockFindTattooPlan.mockResolvedValue(basePlan as never)
+      mockFindArtistProfile.mockResolvedValue({ id: "artist-1", name: "Carlos Ink" } as never)
+      mockFindStudioInfo.mockResolvedValue({ id: "studio-1", name: "Ink Studio Madrid" } as never)
+    })
+
+    it("llama a sendEmail con los datos correctos del template", async () => {
+      mockSendEmail.mockResolvedValue({ success: true })
+
+      await notificationService.sendTattooPlan("plan-001", sessionTokens)
+
+      expect(mockSendEmail).toHaveBeenCalledOnce()
+      const call = mockSendEmail.mock.calls[0][0]
+      expect(call.to).toBe("ana@test.com")
+      expect(call.subject).toContain("plan de tatuaje")
+      expect(call.react).toBeDefined()
+    })
+
+    it("las URLs de sesión incluyen el dominio y el token", async () => {
+      mockSendEmail.mockResolvedValue({ success: true })
+
+      await notificationService.sendTattooPlan("plan-001", sessionTokens)
+
+      const call = mockSendEmail.mock.calls[0][0]
+      // The react element contains the sessions with bookingUrl — check via props
+      const props = (call.react as { props?: { sessions?: Array<{ bookingUrl: string }> } }).props
+      expect(props?.sessions?.[0].bookingUrl).toBe("https://estudio.com/session-link/tok-abc-1")
+      expect(props?.sessions?.[1].bookingUrl).toBe("https://estudio.com/session-link/tok-abc-2")
+    })
+
+    it("crea Notification con tipo TATTOO_PLAN_SENT y la marca SENT al enviar", async () => {
+      mockSendEmail.mockResolvedValue({ success: true })
+
+      await notificationService.sendTattooPlan("plan-001", sessionTokens)
+
+      expect(mockCreate).toHaveBeenCalledWith("appt-001", "TATTOO_PLAN_SENT")
+      expect(mockMarkSent).toHaveBeenCalledWith("notif-001")
+      expect(mockMarkFailed).not.toHaveBeenCalled()
+    })
+
+    it("cuando sendEmail falla crea Notification con status FAILED sin lanzar error", async () => {
+      mockSendEmail.mockResolvedValue({ success: false, error: "Resend API error" })
+
+      await expect(
+        notificationService.sendTattooPlan("plan-001", sessionTokens)
+      ).resolves.toBeUndefined()
+
+      expect(mockMarkFailed).toHaveBeenCalledWith("notif-001", "Resend API error")
+      expect(mockMarkSent).not.toHaveBeenCalled()
     })
   })
 })

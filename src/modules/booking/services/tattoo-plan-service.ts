@@ -74,6 +74,14 @@ export const tattooPlanService = {
     // If any step fails the whole operation is aborted
     const expiresAt = new Date(Date.now() + SESSION_LINK_TTL_MS)
 
+    // Collect plain tokens to pass to notificationService (tokens are not stored in plain text in DB)
+    const sessionTokens: Array<{
+      sessionNumber: number
+      durationMinutes: number
+      token: string
+      expiresAt: Date
+    }> = []
+
     for (const session of plan.sessions) {
       const token = generateSecureToken()
       const tokenHash = hashToken(token)
@@ -86,6 +94,13 @@ export const tattooPlanService = {
       })
 
       await tattooPlanRepository.updateSessionLinkId(session.id, sessionLink.id)
+
+      sessionTokens.push({
+        sessionNumber: session.sessionNumber,
+        durationMinutes: session.durationMinutes,
+        token,
+        expiresAt,
+      })
     }
 
     await tattooPlanRepository.updatePlanStatus(planId, "SENT")
@@ -98,8 +113,7 @@ export const tattooPlanService = {
       },
     })
 
-    // TODO: #073 — implement actual email template and send it
-    await notificationService.sendTattooPlan(planId)
+    await notificationService.sendTattooPlan(planId, sessionTokens)
 
     return {
       planId,

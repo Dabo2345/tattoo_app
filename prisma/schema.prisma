@@ -47,6 +47,7 @@ enum NotificationType {
   SESSION_LINK_SENT
   REMINDER_24H
   REMINDER_2H
+  TATTOO_PLAN_SENT
 }
 
 enum MagicLinkPurpose {

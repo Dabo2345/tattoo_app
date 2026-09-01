@@ -104,6 +104,7 @@ NotificationType {
   APPOINTMENT_RESCHEDULED
   MAGIC_LINK_SENT
   SESSION_LINK_SENT
+  TATTOO_PLAN_SENT
   REMINDER_24H
   REMINDER_2H
 }
@@ -136,6 +137,13 @@ export const notificationService = {
 
   // Enviado al generar SessionLink desde admin
   async sendSessionLink(appointmentId: string, sessionLinkToken: string): Promise<void>
+
+  // Enviado al enviar el plan de tatuaje al cliente (TattooPlanService.sendPlanToClient)
+  // sessionTokens: tokens plain de cada SessionLink creado (solo disponibles en el momento de creación)
+  async sendTattooPlan(
+    planId: string,
+    sessionTokens: Array<{ sessionNumber: number; durationMinutes: number; token: string; expiresAt: Date }>
+  ): Promise<void>
 
   // Enviados por el sistema de recordatorios
   async sendReminder24h(appointmentId: string): Promise<void>
@@ -185,6 +193,7 @@ Esto permite:
 | `appointment-rescheduled` | Nombre cliente, fecha anterior, nueva fecha, MagicLink actualizado |
 | `magic-link` | Nombre cliente, enlace de gestión (válido 2 horas), botones: ver cita, cancelar, reprogramar |
 | `session-link` | Nombre cliente, enlace para reservar sesión `{APP_URL}/session-link/{token}` (válido 30 días), instrucciones |
+| `tattoo-plan` | Nombre cliente, nombre artista, características del tatuaje (estilo/tamaño/placement/descripción/notas), lista de sesiones con duración y botón de reserva individual por sesión, fecha de expiración de cada link |
 | `reminder-24h` | Nombre cliente, fecha y hora, dirección estudio, instrucciones preparación |
 | `reminder-2h` | Nombre cliente, hora cita, dirección estudio |
 
