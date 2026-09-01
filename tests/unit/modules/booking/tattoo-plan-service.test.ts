@@ -247,7 +247,7 @@ describe("tattooPlanService.sendPlanToClient", () => {
     await tattooPlanService.sendPlanToClient("plan-001")
 
     const calls = mockCreateSessionLink.mock.calls
-    expect(calls[0][0]).toMatchObject({ sessionDurationMinutes: 180 })
-    expect(calls[1][0]).toMatchObject({ sessionDurationMinutes: 120 })
+    expect(calls[0]![0]).toMatchObject({ sessionDurationMinutes: 180 })
+    expect(calls[1]![0]).toMatchObject({ sessionDurationMinutes: 120 })
   })
 })

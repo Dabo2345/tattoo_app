@@ -427,7 +427,7 @@ describe("notificationService", () => {
       await notificationService.sendTattooPlan("plan-001", sessionTokens)
 
       expect(mockSendEmail).toHaveBeenCalledOnce()
-      const call = mockSendEmail.mock.calls[0][0]
+      const call = mockSendEmail.mock.calls[0]![0]
       expect(call.to).toBe("ana@test.com")
       expect(call.subject).toContain("plan de tatuaje")
       expect(call.react).toBeDefined()
@@ -438,11 +438,11 @@ describe("notificationService", () => {
 
       await notificationService.sendTattooPlan("plan-001", sessionTokens)
 
-      const call = mockSendEmail.mock.calls[0][0]
+      const call = mockSendEmail.mock.calls[0]![0]
       // The react element contains the sessions with bookingUrl — check via props
       const props = (call.react as { props?: { sessions?: Array<{ bookingUrl: string }> } }).props
-      expect(props?.sessions?.[0].bookingUrl).toBe("https://estudio.com/session-link/tok-abc-1")
-      expect(props?.sessions?.[1].bookingUrl).toBe("https://estudio.com/session-link/tok-abc-2")
+      expect(props?.sessions?.[0]!.bookingUrl).toBe("https://estudio.com/session-link/tok-abc-1")
+      expect(props?.sessions?.[1]!.bookingUrl).toBe("https://estudio.com/session-link/tok-abc-2")
     })
 
     it("crea Notification con tipo TATTOO_PLAN_SENT y la marca SENT al enviar", async () => {

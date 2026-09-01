@@ -472,8 +472,8 @@ describe("filterStartSlotsByDuration", () => {
     const base = makeBase30Slots("2026-08-01", 10, 18)
     const result = filterStartSlotsByDuration(base, 300)
     expect(result.length).toBeGreaterThan(0)
-    expect(result[0].startsAt.toISOString()).toBe("2026-08-01T10:00:00.000Z")
-    const last = result[result.length - 1]
+    expect(result[0]!.startsAt.toISOString()).toBe("2026-08-01T10:00:00.000Z")
+    const last = result[result.length - 1]!
     expect(last.startsAt.toISOString()).toBe("2026-08-01T13:00:00.000Z")
     expect(last.endsAt.toISOString()).toBe("2026-08-01T18:00:00.000Z")
   })
@@ -537,7 +537,7 @@ describe("calendarService.getAvailableSlots con durationMinutes", () => {
     const slots = await calendarService.getAvailableSlots(from, to)
     expect(slots.length).toBeGreaterThan(0)
     // Duración de cada slot debe ser 60 min (consultationDurationMinutes)
-    const duration = slots[0].endsAt.getTime() - slots[0].startsAt.getTime()
+    const duration = slots[0]!.endsAt.getTime() - slots[0]!.startsAt.getTime()
     expect(duration).toBe(60 * 60 * 1000)
   })
 
@@ -545,10 +545,10 @@ describe("calendarService.getAvailableSlots con durationMinutes", () => {
     const slots = await calendarService.getAvailableSlots(from, to, 300)
     expect(slots.length).toBeGreaterThan(0)
     // Duración de cada slot devuelto debe ser 300 min
-    const duration = slots[0].endsAt.getTime() - slots[0].startsAt.getTime()
+    const duration = slots[0]!.endsAt.getTime() - slots[0]!.startsAt.getTime()
     expect(duration).toBe(300 * 60 * 1000)
     // El último inicio no debe superar las 15:00 (20:00 - 5h)
-    const last = slots[slots.length - 1]
+    const last = slots[slots.length - 1]!
     expect(last.startsAt.getUTCHours()).toBeLessThanOrEqual(15)
   })
 

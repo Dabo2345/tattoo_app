@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import { TattooPlanForm } from "@/modules/booking/components/tattoo-plan-form"
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -81,7 +80,7 @@ describe("TattooPlanForm", () => {
     expect(deleteBtns).toHaveLength(2)
 
     // Remove first session
-    fireEvent.click(deleteBtns[0])
+    fireEvent.click(deleteBtns[0]!)
     expect(screen.getAllByRole("listitem")).toHaveLength(1)
 
     // Delete button should disappear when only one session remains
