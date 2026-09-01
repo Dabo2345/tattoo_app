@@ -1,6 +1,6 @@
 # CLAUDE.md — EXECUTION CONTROL SYSTEM
 
-> Versión: 3.0 | Fecha: 2026-06-12 | Estado: ACTIVO Y OBLIGATORIO
+> Versión: 3.1 | Fecha: 2026-09-02 | Estado: ACTIVO Y OBLIGATORIO
 
 ---
 
@@ -40,6 +40,9 @@ Antes de cualquier acción, Claude debe conocer los documentos de referencia:
 | ENV-001 | /docs/Documento 17 — ENV-001 — Variables de Entorno.md | Variables de entorno |
 | ERROR-001 | /docs/Documento 18 — ERROR-001 — Estrategia de Error Handling.md | Manejo de errores |
 | ISSUE-DOC-001 | /issues-docs/Documento 014 — ISSUE-DOC-001 — Issue Documentation System.md | Sistema de issue docs |
+| DATA-001B | /docs/Documento 03B — DATA-001 — Modelo de Dominio y Base de Datos.md | Modelo de datos (Parte 2) |
+| ONBOARD-001 | /docs/Documento 19 — ONBOARD-001 — Setup Local y Onboarding.md | Setup local y onboarding |
+| DEPLOY-001 | /docs/Documento 20 — DEPLOY-001 — Runbook de Deployment.md | Runbook de deployment |
 
 ---
 
