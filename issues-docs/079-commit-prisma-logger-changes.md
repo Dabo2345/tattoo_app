@@ -1,85 +1,62 @@
-# ISSUE DOC #079 — Fix: commitar cambios locales en prisma/schema.prisma y src/lib/logger.ts
+# ISSUE DOC #079 — Fix: commitar cambios locales en src/lib/logger.ts
 
 **Issue GitHub:** #153
 **Tipo:** bugfix
 **Prioridad:** P1: High
 **Rama:** `fix/079-commit-prisma-logger`
-**Estado:** PENDIENTE
+**Estado:** COMPLETADO
 **Fecha:** 2026-09-02
 
 ---
 
 ## 1. CONTEXTO
 
-Hay dos archivos con cambios funcionales importantes que existen en el working tree local pero nunca fueron commiteados a develop. Están en estado modificado sin trackear en git.
+Hay un cambio funcional importante en `src/lib/logger.ts` que existía en el working tree local pero nunca fue commiteado a develop.
 
-Adicionalmente existe una migración Prisma no commiteada (`20260612234333_initial_schema`) que necesita revisión antes de incluirse.
+El cambio de `prisma/schema.prisma` que se intentó inicialmente (añadir `url` y `directUrl`) fue DESCARTADO: en Prisma v7 las URLs de conexión se configuran en `prisma.config.ts`, no en el schema. El `prisma.config.ts` ya tenía la configuración correcta desde el inicio.
 
 ---
 
 ## 2. OBJETIVO
 
-Commitear los dos cambios funcionales a develop para que el repositorio refleje el estado real del código.
+Commitear el fix de `src/lib/logger.ts` (serializers de Error) a develop.
 
 ---
 
 ## 3. SCOPE
 
-1. **`prisma/schema.prisma`** — añadir `url` y `directUrl` al datasource (necesario para Supabase connection pooling)
-2. **`src/lib/logger.ts`** — añadir `serializers` para objetos Error (fix para crash de pino-pretty worker en Node.js/Windows)
+1. **`src/lib/logger.ts`** — añadir `serializers` para objetos Error (fix para crash de pino-pretty worker en Node.js/Windows)
+2. **`prisma/schema.prisma`** — revertir los cambios incorrectos (url/directUrl no son válidos en Prisma v7)
 
 ---
 
 ## 4. ANTI-SCOPE
 
 - NO commitear `prisma/migrations/20260612234333_initial_schema/` hasta que se analice si es válida o accidental
-- NO modificar ninguna otra lógica
+- NO tocar `prisma.config.ts` (ya está correctamente configurado con DIRECT_URL)
 
 ---
 
 ## 5. ARCHIVOS AFECTADOS
 
-- `prisma/schema.prisma`
-- `src/lib/logger.ts`
+- `src/lib/logger.ts` (añadir serializers)
+- `prisma/schema.prisma` (revertir cambio incorrecto)
 
 ---
 
 ## 6. ROOT CAUSE
 
-### prisma/schema.prisma
-Supabase requiere dos URLs distintas:
-- `url` → conexión a través del connection pooler (para queries en runtime)
-- `directUrl` → conexión directa sin pooler (para migraciones Prisma)
-
-Sin `directUrl`, `prisma migrate` falla en entornos con pooling (Supabase).
-
 ### src/lib/logger.ts
-En Node.js, pino-pretty corre en un worker thread separado. Pasar un objeto `Error` nativo via `postMessage` al worker lanza una excepción porque `Error` no es transferible entre contextos de thread. Los `serializers` convierten el Error a JSON plano antes del postMessage, evitando el crash.
+En Node.js, pino-pretty corre en un worker thread separado. Pasar un objeto `Error` nativo via `postMessage` al worker lanza una excepción porque `Error` no es transferible entre contextos de thread. Los `serializers` convierten el Error a JSON plano antes del postMessage, evitando el crash ("the worker has exited").
+
+### prisma/schema.prisma (análisis post-hoc)
+Prisma v7 eliminó el soporte de `url` y `directUrl` en el datasource del schema. Las URLs de conexión deben estar en `prisma.config.ts`. El archivo ya tenía la configuración correcta (`url: process.env.DIRECT_URL ?? process.env.DATABASE_URL`). No era necesario modificar el schema.
 
 ---
 
-## 7. FLUJO DE EJECUCIÓN
+## 7. DEFINITION OF DONE
 
-1. Crear rama `fix/079-commit-prisma-logger`
-2. Stage `prisma/schema.prisma` y `src/lib/logger.ts`
-3. Commit con mensaje convencional
-4. Push y crear PR
-5. Verificar CI verde
-6. Merge a develop
-
----
-
-## 8. DOCUMENTACIÓN AFECTADA
-
-| Documento | Sección | Cambio |
-|-----------|---------|--------|
-| `ENV-001` | Variables de entorno | Verificar que `DIRECT_URL` esté documentada |
-
----
-
-## 9. DEFINITION OF DONE
-
-- [ ] `prisma/schema.prisma` commiteado con `url` y `directUrl`
-- [ ] `src/lib/logger.ts` commiteado con serializers
-- [ ] CI verde
-- [ ] PR mergeado a develop
+- [x] `src/lib/logger.ts` commiteado con serializers
+- [x] `prisma/schema.prisma` revertido al estado correcto (solo `provider = "postgresql"`)
+- [x] CI verde
+- [x] PR mergeado a develop
