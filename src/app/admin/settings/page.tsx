@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { prisma } from "@/lib/db/prisma"
-import { type BreakTime } from "@/app/admin/settings/actions"
+import { breaksArraySchema } from "@/app/admin/settings/actions"
+import { logger } from "@/lib/logger"
 import { WorkingHoursForm } from "@/components/admin/working-hours-form"
 import { BreakTimesForm } from "@/components/admin/break-times-form"
 import { DepositForm } from "@/components/admin/deposit-form"
@@ -18,7 +19,7 @@ const defaults = {
   slotDurationMinutes: 30,
   consultationDurationMinutes: 60,
   depositAmount: 50,
-  breaks: [] as BreakTime[],
+  breaks: [],
 }
 
 export default async function AdminSettingsPage() {
@@ -44,7 +45,14 @@ export default async function AdminSettingsPage() {
         consultationDurationMinutes: defaults.consultationDurationMinutes,
       }
 
-  const breaksInitial = config ? (config.breaks as unknown as BreakTime[]) : defaults.breaks
+  const breaksResult = breaksArraySchema.safeParse(config?.breaks ?? [])
+  if (!breaksResult.success) {
+    logger.warn(
+      { issues: breaksResult.error.issues },
+      "breaks JSONB en BD no supera validación Zod — usando fallback vacío"
+    )
+  }
+  const breaksInitial = breaksResult.success ? breaksResult.data : defaults.breaks
 
   const depositInitial = {
     depositAmount: config ? Number(config.depositAmount) : defaults.depositAmount,

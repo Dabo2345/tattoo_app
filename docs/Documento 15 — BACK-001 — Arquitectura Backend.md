@@ -537,6 +537,26 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
 - Nunca se editan migraciones ya generadas
 - Toda migración destructiva requiere Issue de tipo `feat(db):`
 
+## 11.3 Patrón: validación Zod al leer campos JSONB
+
+Los campos JSONB de Prisma se exponen como `JsonValue` (sin tipo en tiempo de ejecución).
+Nunca se deben castear directamente con `as unknown as T`. Se debe validar con Zod:
+
+```typescript
+// ✅ Correcto
+const result = myArraySchema.safeParse(record.jsonbField ?? [])
+if (!result.success) {
+  logger.warn({ issues: result.error.issues }, "JSONB corrupto — usando fallback")
+}
+const value = result.success ? result.data : fallbackValue
+
+// ❌ Prohibido
+const value = record.jsonbField as unknown as MyType[]
+```
+
+El schema Zod usado para leer debe ser el mismo (o compatible) con el que valida las escrituras,
+para garantizar consistencia. Exportar el schema desde el módulo que lo define para reutilizarlo.
+
 ## 11.3 Convenciones de schema
 
 - Todos los IDs son UUIDs (`@id @default(uuid())`)
