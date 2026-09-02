@@ -135,7 +135,7 @@ Localización: `/src/modules/[modulo]/actions.ts`
 ```
 /src/modules/
 ├── gallery/
-│   └── actions.ts    ← uploadGalleryImageAction, deleteGalleryImageAction, reorderGalleryAction
+│   └── (las Server Actions de galería viven en /src/app/admin/gallery/actions.ts y delegan a gallery-service)
 ├── content/
 │   └── actions.ts    ← updateArtistProfileAction, updateStudioInfoAction
 └── admin/
@@ -334,7 +334,7 @@ Cada módulo en `/src/modules/` tiene esta estructura interna:
 | `calendar` | Slots, disponibilidad, descansos, BlockedPeriods |
 | `payment` | Stripe checkout, webhooks, reembolsos |
 | `notification` | Envío de emails via Resend, plantillas, triggers |
-| `gallery` | Imágenes, StyleTags, ordenación, Supabase Storage |
+| `gallery` | Imágenes, StyleTags, ordenación, Supabase Storage — `gallery-service` (upload, softDelete, reorder) + `gallery-repository` (lectura pública, lectura admin, escritura) |
 | `content` | Home, perfil artista, información estudio |
 | `auth` | Integración Better Auth, sesiones admin |
 | `admin` | Orquestación panel admin, configuración |

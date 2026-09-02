@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { prisma } from "@/lib/db/prisma"
+import { galleryRepository } from "@/modules/gallery/repositories/gallery-repository"
 import { GalleryGrid } from "@/components/admin/gallery-grid"
 import { GalleryUploadForm } from "@/components/admin/gallery-upload-form"
 
@@ -10,15 +10,8 @@ export const metadata: Metadata = {
 
 export default async function AdminGalleryPage() {
   const [images, styleTags] = await Promise.all([
-    prisma.galleryImage.findMany({
-      where: { deletedAt: null },
-      orderBy: { order: "asc" },
-      select: { id: true, url: true, thumbnailUrl: true, altText: true, order: true },
-    }),
-    prisma.styleTag.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
+    galleryRepository.findAllForAdmin(),
+    galleryRepository.findAllTagsForAdmin(),
   ])
 
   return (
