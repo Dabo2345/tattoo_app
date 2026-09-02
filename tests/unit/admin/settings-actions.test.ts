@@ -31,6 +31,7 @@ import {
   updateWorkingHoursAction,
   updateBreakTimesAction,
   updateDepositAmountAction,
+  breaksArraySchema,
 } from "@/app/admin/settings/actions"
 
 const STUDIO_CONFIG_ID = "00000000-0000-0000-0000-000000000003"
@@ -280,5 +281,46 @@ describe("updateDepositAmountAction", () => {
         }),
       })
     )
+  })
+})
+
+// ─── breaksArraySchema ────────────────────────────────────────────────────────
+
+describe("breaksArraySchema", () => {
+  const validBreak = {
+    id: "123e4567-e89b-12d3-a456-426614174000",
+    label: "Almuerzo",
+    startHour: 13,
+    startMinute: 0,
+    endHour: 14,
+    endMinute: 0,
+  }
+
+  it("parsea un array de breaks válido", () => {
+    const result = breaksArraySchema.safeParse([validBreak])
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data).toHaveLength(1)
+  })
+
+  it("parsea un array vacío", () => {
+    const result = breaksArraySchema.safeParse([])
+    expect(result.success).toBe(true)
+  })
+
+  it("falla si el valor es null", () => {
+    expect(breaksArraySchema.safeParse(null).success).toBe(false)
+  })
+
+  it("falla si el valor es un objeto (no array)", () => {
+    expect(breaksArraySchema.safeParse({ id: "x" }).success).toBe(false)
+  })
+
+  it("falla si un item del array tiene campos faltantes", () => {
+    expect(breaksArraySchema.safeParse([{ id: "x", label: "Solo label" }]).success).toBe(false)
+  })
+
+  it("falla si un item tiene startHour >= endHour (misma hora)", () => {
+    const invalid = { ...validBreak, startHour: 14, startMinute: 0, endHour: 14, endMinute: 0 }
+    expect(breaksArraySchema.safeParse([invalid]).success).toBe(false)
   })
 })

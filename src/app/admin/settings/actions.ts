@@ -66,8 +66,10 @@ const breakTimeItemSchema = z
     message: "El inicio de la pausa debe ser anterior al fin",
   })
 
+export const breaksArraySchema = z.array(breakTimeItemSchema)
+
 const breakTimesSchema = z.object({
-  breaks: z.array(breakTimeItemSchema).max(10),
+  breaks: breaksArraySchema.max(10),
 })
 
 const depositSchema = z.object({
