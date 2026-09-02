@@ -47,6 +47,14 @@ vi.mock("@/lib/sentry", () => ({
   captureException: vi.fn(),
 }))
 
+const mockRateLimiterCheck = vi.hoisted(() => vi.fn().mockReturnValue(true))
+
+vi.mock("@/lib/api/rate-limiter", () => ({
+  InMemoryRateLimiter: vi.fn(function () {
+    return { check: mockRateLimiterCheck }
+  }),
+}))
+
 import { stripe } from "@/lib/stripe/client"
 import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
 import { auditService } from "@/modules/audit/services/audit-service"
@@ -103,6 +111,7 @@ function makeRefundEvent(paymentIntentOverride?: string | null) {
 describe("POST /api/webhooks/stripe", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRateLimiterCheck.mockReturnValue(true)
     mockFindByAppointmentId.mockResolvedValue(null)
     mockConfirmPayment.mockResolvedValue([{ count: 1 }, { count: 1 }] as never)
     mockAuditLog.mockResolvedValue(undefined)
@@ -228,5 +237,25 @@ describe("POST /api/webhooks/stripe", () => {
     const body = await res.json()
     expect(body.received).toBe(true)
     expect(mockConfirmPayment).not.toHaveBeenCalled()
+  })
+
+  // ─── Rate limiting ────────────────────────────────────────────────────────
+
+  it("devuelve 429 cuando el rate limiter rechaza la petición", async () => {
+    mockRateLimiterCheck.mockReturnValueOnce(false)
+
+    const res = await POST(makeRequest())
+
+    expect(res.status).toBe(429)
+    const body = await res.json()
+    expect(body.error).toBe("Too many requests")
+  })
+
+  it("no ejecuta verificación de firma cuando el rate limiter bloquea", async () => {
+    mockRateLimiterCheck.mockReturnValueOnce(false)
+
+    await POST(makeRequest())
+
+    expect(mockConstructEvent).not.toHaveBeenCalled()
   })
 })

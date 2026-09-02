@@ -377,6 +377,22 @@ Registrados
 
 ---
 
+## Rate Limiting del Webhook
+
+El endpoint `POST /api/webhooks/stripe` aplica rate limiting in-memory por IP:
+
+- **Límite:** 60 peticiones por minuto por IP
+- **Ventana:** sliding window de 60 segundos
+- **IP:** extraída de `x-forwarded-for` (primera entrada) o `x-real-ip`, con fallback a `"unknown"`
+- **Respuesta al superar el límite:** HTTP 429 `{ "error": "Too many requests" }`
+- **Log:** `logger.warn` con la IP bloqueada
+
+Implementación: `src/lib/api/InMemoryRateLimiter` (in-memory, lazy eviction de entradas expiradas).
+
+El rate limiting es una capa de defensa adicional contra flooding. La verificación de firma Stripe (`constructEvent`) sigue siendo la protección principal contra inyección de eventos falsos.
+
+---
+
 # 16. Protección de Datos Personales
 
 Datos almacenados:

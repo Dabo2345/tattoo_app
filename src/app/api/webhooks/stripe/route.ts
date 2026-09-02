@@ -6,6 +6,7 @@ import { captureException } from "@/lib/sentry"
 import { paymentRepository } from "@/modules/payment/repositories/payment-repository"
 import { auditService } from "@/modules/audit/services/audit-service"
 import { notificationService } from "@/modules/notification/services/notification-service"
+import { InMemoryRateLimiter } from "@/lib/api/rate-limiter"
 import type Stripe from "stripe"
 
 /**
@@ -15,7 +16,21 @@ import type Stripe from "stripe"
  * RA-004: Stripe solo desde backend.
  * RB-003: Sin confirmación sin pago válido.
  */
+
+// 60 peticiones por minuto por IP — protección contra flooding
+const rateLimiter = new InMemoryRateLimiter(60, 60_000)
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+
+  if (!rateLimiter.check(ip)) {
+    logger.warn({ ip }, "Rate limit superado en webhook de Stripe")
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 })
+  }
+
   const signature = request.headers.get("stripe-signature")
 
   if (!signature) {
