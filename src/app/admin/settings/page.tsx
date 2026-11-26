@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { prisma } from "@/lib/db/prisma"
-import { breaksArraySchema } from "@/app/admin/settings/actions"
+import { breaksArraySchema } from "@/modules/admin/schemas/settings-schemas"
 import { logger } from "@/lib/logger"
 import { WorkingHoursForm } from "@/components/admin/working-hours-form"
 import { BreakTimesForm } from "@/components/admin/break-times-form"

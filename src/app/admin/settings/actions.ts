@@ -4,6 +4,7 @@ import { headers } from "next/headers"
 import { z } from "zod"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db/prisma"
+import { breaksArraySchema } from "@/modules/admin/schemas/settings-schemas"
 
 // ─── Singleton ID ─────────────────────────────────────────────────────────────
 
@@ -52,21 +53,6 @@ const workingHoursSchema = z
     },
     { message: "La ventana laboral debe ser mayor o igual a la duración de la consulta" }
   )
-
-const breakTimeItemSchema = z
-  .object({
-    id: z.string().uuid(),
-    label: z.string().min(1, "El nombre de la pausa es requerido").max(100),
-    startHour: z.number({ error: "Debe ser un número" }).int().min(0).max(23),
-    startMinute: z.number({ error: "Debe ser un número" }).int().min(0).max(59),
-    endHour: z.number({ error: "Debe ser un número" }).int().min(0).max(23),
-    endMinute: z.number({ error: "Debe ser un número" }).int().min(0).max(59),
-  })
-  .refine((b) => b.startHour * 60 + b.startMinute < b.endHour * 60 + b.endMinute, {
-    message: "El inicio de la pausa debe ser anterior al fin",
-  })
-
-export const breaksArraySchema = z.array(breakTimeItemSchema)
 
 const breakTimesSchema = z.object({
   breaks: breaksArraySchema.max(10),
