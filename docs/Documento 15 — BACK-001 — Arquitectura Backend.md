@@ -555,7 +555,13 @@ const value = record.jsonbField as unknown as MyType[]
 ```
 
 El schema Zod usado para leer debe ser el mismo (o compatible) con el que valida las escrituras,
-para garantizar consistencia. Exportar el schema desde el módulo que lo define para reutilizarlo.
+para garantizar consistencia. Definir el schema en `/src/modules/[modulo]/schemas/` y exportarlo desde ahí para reutilizarlo
+(ejemplo: `breaksArraySchema` en `src/modules/admin/schemas/settings-schemas.ts`).
+
+> ⚠️ Nunca exportar schemas, constantes u objetos desde un archivo `"use server"` (`actions.ts`).
+> Next.js solo permite exportar funciones async desde esos archivos; cualquier otro export rompe
+> `next build` (`A "use server" file can only export async functions`). El error no aparece en
+> `pnpm dev`. El test `tests/unit/admin/use-server-exports.test.ts` lo verifica en CI (#172).
 
 ## 11.3 Convenciones de schema
 

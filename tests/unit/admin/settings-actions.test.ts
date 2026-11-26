@@ -31,8 +31,8 @@ import {
   updateWorkingHoursAction,
   updateBreakTimesAction,
   updateDepositAmountAction,
-  breaksArraySchema,
 } from "@/app/admin/settings/actions"
+import { breaksArraySchema } from "@/modules/admin/schemas/settings-schemas"
 
 const STUDIO_CONFIG_ID = "00000000-0000-0000-0000-000000000003"
 
